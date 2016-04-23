@@ -67,4 +67,69 @@ void send_json(zmq::socket_t & sock, boost::property_tree::ptree & json);
 
 std::string event_to_string(int event);
 
+
+// variable argument receive implementation
+
+template <typename T>
+inline void recv_one(zmq::socket_t & sock, T & t)  //!< generic POD receive support
+{
+	zmq::message_t msg;
+	sock.recv(&msg);
+	assert(msg.size() == sizeof(T) && "message size not match");
+	t = *(T *)msg.data();
+}
+
+template <>
+inline void recv_one<std::string>(zmq::socket_t & sock, std::string & s)
+{
+	zmq::message_t msg;
+	sock.recv(&msg);
+	s.assign(static_cast<char const *>(msg.data()), msg.size());
+}
+
+
+template <typename T>
+inline void recv(zmq::socket_t & sock, T & t)
+{
+	recv_one(sock, t);
+}
+
+// citanie multipart sprav
+template <typename T, typename ... Args>
+inline void recv(zmq::socket_t & sock, T & t, Args & ... args)
+{
+	recv_one(sock, t);
+	recv(sock, args ...);
+}
+
+
+
+// variable argument send implementation
+
+template <typename T>
+inline void send_one(zmq::socket_t & sock, T const & t, bool more)  //!< generic POD send support
+{
+	sock.send(static_cast<void const *>(&t), sizeof(T), more ? ZMQ_SNDMORE : 0);
+}
+
+template <>
+inline void send_one<std::string>(zmq::socket_t & sock, std::string const & s, bool more)
+{
+	sock.send(s.data(), s.size(), more ? ZMQ_SNDMORE : 0);
+}
+
+
+template <typename T>
+inline void send(zmq::socket_t & sock, T const & t)
+{
+	send_one(sock, t, false);
+}
+
+template <typename T, typename ... Args>
+inline void send(zmq::socket_t & sock, T const & t, Args const & ... args)
+{
+	send_one(sock, t, true);
+	send(sock, args ...);
+}
+
 }   // zmq
