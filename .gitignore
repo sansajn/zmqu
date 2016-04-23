@@ -1,0 +1,11 @@
+*.o
+
+.sconsign.dblite
+.directory
+
+zmqu.creator
+zmqu.creator.user
+zmqu.files
+zmqu.includes
+zmqu.config
+
