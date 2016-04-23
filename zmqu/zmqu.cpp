@@ -182,13 +182,6 @@ std::string recv(zmq::socket_t & sock)
 	return string{static_cast<char const *>(msg.data()), msg.size()};
 }
 
-void recv(zmq::socket_t & sock, std::string & s)
-{
-	zmq::message_t msg;
-	sock.recv(&msg);
-	s.assign(static_cast<char const *>(msg.data()), msg.size());
-}
-
 void recv_json(zmq::socket_t & sock, pt::ptree & json)
 {
 	zmq::message_t msg;

@@ -1,1 +1,8 @@
 ZeroMQ library utilities for everyday C++.
+
+dependences: 
+
+	libzmq3-dev, 
+	boost (1.58),
+	libgtest-dev
+

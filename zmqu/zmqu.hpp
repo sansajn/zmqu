@@ -53,8 +53,8 @@ private:
 };
 
 
+
 std::string recv(zmq::socket_t & sock);
-void recv(zmq::socket_t & sock, std::string & s);
 void recv(socket_t & sock, std::vector<std::string> & messages);
 void recv_json(zmq::socket_t & sock, boost::property_tree::ptree & json);
 
@@ -65,7 +65,11 @@ void send(zmq::socket_t & sock, char const * buf, unsigned len, bool more = fals
 void send(zmq::socket_t & sock, std::vector<std::string> const & messages);  //!< sends multipart message
 void send_json(zmq::socket_t & sock, boost::property_tree::ptree & json);
 
+
+
+
 std::string event_to_string(int event);
+
 
 
 // variable argument receive implementation
@@ -94,7 +98,7 @@ inline void recv(zmq::socket_t & sock, T & t)
 	recv_one(sock, t);
 }
 
-// citanie multipart sprav
+//! multipart message receive for heterogeneous data
 template <typename T, typename ... Args>
 inline void recv(zmq::socket_t & sock, T & t, Args & ... args)
 {
@@ -125,11 +129,20 @@ inline void send(zmq::socket_t & sock, T const & t)
 	send_one(sock, t, false);
 }
 
+//! multipart message send for heterogeneous data
 template <typename T, typename ... Args>
 inline void send(zmq::socket_t & sock, T const & t, Args const & ... args)
 {
 	send_one(sock, t, true);
 	send(sock, args ...);
 }
+
+
+template <typename T>
+inline void send_multipart(zmq::socket_t & sock, T const & t)
+{
+	send_one(sock, t, true);
+}
+
 
 }   // zmq
