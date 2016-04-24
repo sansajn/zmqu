@@ -6,3 +6,11 @@ dependences:
 	boost (1.58),
 	libgtest-dev
 
+
+{build}
+
+Just run
+
+	$ scons
+
+command from library directory.
