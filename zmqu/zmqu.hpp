@@ -74,9 +74,7 @@ inline void recv_one<zmq_event_t>(zmq::socket_t & sock, zmq_event_t & e)
 	zmq::message_t msg;
 	sock.recv(&msg);
 	assert(msg.more());
-	void * p = msg.data();
-	e.event = *(uint16_t *)p;
-	e.value = *(uint32_t *)((uint8_t *)p + 2);
+	memcpy(&e, msg.data(), sizeof(e));
 }
 
 void recv_one(zmq::socket_t & sock, std::vector<std::string> & vec);  // TODO: expand to general T not only string

@@ -11,9 +11,9 @@ using std::stringstream;
 namespace pt = boost::property_tree;
 
 
-void poller::add(zmq::socket_t & sock, short revents)
+void poller::add(zmq::socket_t & sock, short revents)  // TODO: rename -> revent are events
 {
-	_items.push_back(zmq_pollitem_t{(void *)sock, 0, revents});
+	_items.push_back(zmq_pollitem_t{(void *)sock, 0, revents, 0});
 }
 
 void poller::poll(std::chrono::milliseconds timeout)
@@ -126,7 +126,9 @@ string event_to_string(int event)
 		case ZMQ_EVENT_CLOSED: return "closed";
 		case ZMQ_EVENT_CLOSE_FAILED: return "close failed";
 		case ZMQ_EVENT_DISCONNECTED: return "disconnected";
+#if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 1, 0)
 		case ZMQ_EVENT_MONITOR_STOPPED: return "monitor stopped";
+#endif
 		default: return "unknown";
 	}
 }
