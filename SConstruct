@@ -19,3 +19,9 @@ env.Program(['ccserv.cpp', zmqu_objs])
 env.Program(['test_varargs_recv_send.cpp', zmqu_objs])
 env.Program(['varargs_recv_client.cpp', zmqu_objs])
 
+# tests
+env.Program([
+	'tests.cpp',
+	'test_clone_client.cpp',
+	zmqu_objs
+])

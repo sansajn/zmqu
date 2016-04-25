@@ -15,9 +15,9 @@ public:
 	clone_client(std::shared_ptr<zmq::context_t> ctx);
 	virtual ~clone_client();
 
-	void connect(std::string const & host, short first_port);
-	void connect(std::string const & host, short subscriber_port, short requester_port, short notifier_port);
-	void start();
+	virtual void connect(std::string const & host, short first_port);
+	virtual void connect(std::string const & host, short subscriber_port, short requester_port, short notifier_port);
+	virtual void start();
 
 	mailbox create_mailbox() const;
 

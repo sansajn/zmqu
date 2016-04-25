@@ -13,9 +13,9 @@ public:
 	clone_server(std::shared_ptr<zmq::context_t> ctx);
 	virtual ~clone_server();
 
-	void bind(short first_port);
-	void bind(short publisher_port, short responder_port, short collector_port);
-	void start();
+	virtual void bind(short first_port);
+	virtual void bind(short publisher_port, short responder_port, short collector_port);
+	virtual void start();
 
 	mailbox create_mailbox() const;
 
