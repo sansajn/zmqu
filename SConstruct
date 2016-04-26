@@ -3,7 +3,8 @@
 env = Environment(
 	CCFLAGS=['-std=c++11', '-Wall', '-g', '-O0'],
 	CPPPATH=['.'],
-	LIBS=['gtest', 'pthread'],
+	LIBS=['gtest', 'pthread', 'boost_system', 'boost_thread'],
+	CPPDEFINES=['BOOST_SPIRIT_THREADSAFE'],
 )
 
 env.ParseConfig('pkg-config --cflags --libs libzmq')
