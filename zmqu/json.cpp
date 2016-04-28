@@ -1,5 +1,6 @@
 #include "json.hpp"
 #include <sstream>
+#include <boost/property_tree/json_parser.hpp>
 
 using std::stringstream;
 namespace pt = boost::property_tree;

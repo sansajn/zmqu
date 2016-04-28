@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 using jtree = boost::property_tree::ptree;
 
