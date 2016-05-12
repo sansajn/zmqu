@@ -40,14 +40,14 @@ clone_server::~clone_server()
 	delete _collector_mon;
 }
 
-void clone_server::bind(short first_port)
+void clone_server::bind(short first_port, std::string const & host)
 {
-	bind(first_port, first_port+1, first_port+2);
+	bind(first_port, first_port+1, first_port+2, host);
 }
 
-void clone_server::bind(short publisher_port, short responder_port, short collector_port)
+void clone_server::bind(short publisher_port, short responder_port, short collector_port, std::string const & host)
 {
-	string address{"tcp://*:"};
+	string address = string{"tcp://"} + host + string{":"};
 
 	string full_address = address + to_string(publisher_port);
 	_publisher->bind(full_address.c_str());
