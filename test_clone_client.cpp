@@ -77,3 +77,26 @@ TEST(clone_client_test, ask)
 	client.command(client_mail, "quit");
 	client_thread.join();
 }
+
+TEST(clone_client_test, notify)
+{
+	zmq::context_t ctx;
+	zmq::socket_t collector{ctx, ZMQ_PULL};  // server
+	collector.bind("tcp://*:5558");
+
+	dummy_client_ask_test client;
+	client.connect("localhost", 5556, 5557, 5558);
+	zmq::mailbox client_mail = client.create_mailbox();
+	std::thread client_thread{&dummy_client_ask_test::start, &client};  // run client
+	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
+
+	string notify_msg = "Teresa ready";
+	client.notify(client_mail, notify_msg);
+
+	string msg = zmq::recv(collector);
+
+	EXPECT_EQ(notify_msg, msg);
+
+	client.quit(client_mail);
+	client_thread.join();
+}
