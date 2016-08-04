@@ -1,4 +1,5 @@
 #include "poller.hpp"
+#include <stdexcept>
 
 namespace zmq {
 
