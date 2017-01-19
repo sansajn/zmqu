@@ -20,6 +20,7 @@ public:
 
 private:
 	zmq::socket_t * _inproc;
+	std::string _addr;
 	// TODO: should I store context to prevent its deletion ?
 };
 

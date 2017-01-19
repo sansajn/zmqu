@@ -1,4 +1,4 @@
-// clonesrv3.py script implementation based czmq
+// use of zmq::clone_server with a monitor channel
 #include <map>
 #include <vector>
 #include <string>

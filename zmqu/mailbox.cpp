@@ -8,9 +8,10 @@ using std::swap;
 
 
 mailbox::mailbox(std::string const & uri, std::shared_ptr<zmq::context_t> ctx)
+	: _addr{uri}
 {
 	_inproc = new zmq::socket_t{*ctx, ZMQ_PAIR};
-	_inproc->connect(uri.c_str());
+	_inproc->connect(_addr.c_str());
 }
 
 mailbox::mailbox(mailbox && rhs)
@@ -26,6 +27,9 @@ void mailbox::operator=(mailbox && rhs)
 
 mailbox::~mailbox()
 {
+	if (_inproc)
+		_inproc->disconnect(_addr.c_str());
+
 	delete _inproc;
 }
 

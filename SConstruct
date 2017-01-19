@@ -10,9 +10,9 @@ AddOption(
 cxxflags = ['-std=c++11', '-Wall']
 
 if GetOption('release_build'):
-	cxxflags.extend('-O2')
+	cxxflags.extend(['-O2'])
 else:
-	cxxflags.extend('-g', '-O0')
+	cxxflags.extend(['-g', '-O0'])
 
 env = Environment(
 	CXXFLAGS=cxxflags,
