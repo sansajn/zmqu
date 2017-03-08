@@ -16,17 +16,22 @@ public:
 	virtual void bind(short first_port, std::string const & host = "*");
 	virtual void bind(short publisher_port, short responder_port, short collector_port, std::string const & host = "*");
 	virtual void start();
+	virtual void publish(mailbox & m, std::string const & news);  //!< publish to all subscribers (PUB socket)
+	virtual void command(mailbox & m, std::string const & cmd);  //!< quit, install_monitors
 
 	mailbox create_mailbox() const;  //!< \note needs to be called after bind
 
-	void publish(mailbox & m, std::string const & news);  //!< publish to all subscribers (PUB socket)
-	void command(mailbox & m, std::string const & cmd);  //!< quit, install_monitors
+	// commands
 	void quit(mailbox & m) const;
 	void install_monitors(mailbox & m) const;  // BUG: needs to be called before start()
 
 	virtual std::string on_question(std::string const & question);  //!< client question (ROUTER socket)
 	virtual void on_notify(std::string const & s);  //!< notify message from client (PULL socket)
 	virtual void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
+
+	// monitoring
+	virtual void on_wait();
+	virtual void on_receive();
 
 protected:
 	virtual void idle();

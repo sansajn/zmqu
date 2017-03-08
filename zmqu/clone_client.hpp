@@ -31,6 +31,10 @@ public:
 	virtual void on_answer(std::string const & s);  //!< server answer on request \saa ask()
 	virtual void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 
+	// monitoring api
+	virtual void on_wait();
+	virtual void on_receive();
+
 protected:
 	virtual void idle();  //!< called once each loop, TODO: find a better name
 	void ask_internal(std::string const & s);

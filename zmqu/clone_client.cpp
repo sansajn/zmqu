@@ -72,7 +72,7 @@ void clone_client::start()
 {
 	assert(!_running && "client already running");
 	_running = true;
-	loop();
+	loop();  // blocking
 }
 
 mailbox clone_client::create_mailbox() const
@@ -88,10 +88,12 @@ void clone_client::loop()
 
 	while (!_quit)
 	{
+		on_wait();
 		_socks.poll(std::chrono::milliseconds{20});
 
 		if (_socks.has_input(0))  // requester
 		{
+			on_receive();
 			string s;
 			zmq::recv(*_requester, s);
 			on_answer(s);
@@ -99,6 +101,7 @@ void clone_client::loop()
 
 		if (_socks.has_input(1))  // subscriber
 		{
+			on_receive();
 			string s;
 			zmq::recv(*_subscriber, s);
 			on_news(s);
@@ -106,6 +109,7 @@ void clone_client::loop()
 
 		if (_socks.has_input(2))  // inproc
 		{
+			on_receive();
 			vector<string> msgs;
 			zmq::recv(*_inproc, msgs);
 			assert(msgs.size() == 2 && "two frame message expected (command:int, content:string)");
@@ -217,6 +221,12 @@ void clone_client::on_answer(string const & s)
 {}
 
 void clone_client::on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
+{}
+
+void clone_client::on_wait()
+{}
+
+void clone_client::on_receive()
 {}
 
 void clone_client::idle()

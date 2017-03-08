@@ -112,6 +112,12 @@ void clone_server::on_notify(std::string const & s)
 void clone_server::on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
 {}
 
+void clone_server::on_wait()
+{}
+
+void clone_server::on_receive()
+{}
+
 void clone_server::loop()
 {
 	_socks.add(*_responder, ZMQ_POLLIN);
@@ -120,10 +126,12 @@ void clone_server::loop()
 
 	while (!_quit)
 	{
+		on_wait();
 		_socks.poll(std::chrono::milliseconds{20});
 
 		if (_socks.has_input(0))  // responder requests as (identity, message) tupple
 		{
+			on_receive();
 			vector<string> msgs;
 			zmq::recv(*_responder, msgs);
 			assert(msgs.size() == 2 && "(identity, message) expected");
@@ -135,12 +143,14 @@ void clone_server::loop()
 
 		if (_socks.has_input(1))  // collector
 		{
+			on_receive();
 			string m = zmq::recv(*_collector);
 			on_notify(m);
 		}
 
 		if (_socks.has_input(2))  // inproc
 		{
+			on_receive();
 			vector<string> msgs;
 			zmq::recv(*_inproc, msgs);
 			assert(msgs.size() == 2 && "(title, message) expected");
