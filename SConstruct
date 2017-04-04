@@ -25,18 +25,17 @@ env.ParseConfig('pkg-config --cflags --libs libzmq')
 
 zmqu_objs = env.Object(Glob('zmqu/*.cpp'))
 
-env.Program(['rrserv.cpp', zmqu_objs])
-env.Program(['rrclient.cpp', zmqu_objs])
-
-env.Program(['ccclient.cpp', zmqu_objs])
-env.Program(['ccserv.cpp', zmqu_objs])
-
-env.Program(['test_varargs_recv_send.cpp', zmqu_objs])
-env.Program(['varargs_recv_client.cpp', zmqu_objs])
-
 # tests
 env.Program([
 	'tests.cpp',
 	'test_clone_client.cpp',
+	'test_varargs_recv_send.cpp',
 	zmqu_objs
 ])
+
+# legacy
+env.Program(['legacy/rrserv.cpp', zmqu_objs])
+env.Program(['legacy/rrclient.cpp', zmqu_objs])
+env.Program(['legacy/ccclient.cpp', zmqu_objs])
+env.Program(['legacy/ccserv.cpp', zmqu_objs])
+env.Program(['legacy/varargs_recv_client.cpp', zmqu_objs])
