@@ -6,10 +6,7 @@
 #include "send.hpp"
 #include "poller.hpp"
 #include "mailbox.hpp"
+#include "cast.hpp"
 
 namespace zmqu {
-
-// TODO: move to cast module
-std::string event_to_string(int event);
-
 }  // zmqu
