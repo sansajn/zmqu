@@ -5,7 +5,8 @@
 
 namespace zmq {
 
-//! Multithread safe ZeroMQ clone pattern client implementation.
+/*! Multithread safe ZeroMQ clone pattern client implementation.
+TODO: insert documentation reference */
 class clone_client
 {
 public:
@@ -25,7 +26,6 @@ public:
 	void notify(mailbox & m, std::string const & news) const;  //!< notify a server (PUSH socket)
 	void command(mailbox & m, std::string const & cmd) const;  //!< quit, install_monitors
 	void quit(mailbox & m) const;
-	void install_monitors(mailbox & m) const;
 
 	virtual void on_news(std::string const & s);  //!< a news from publisher
 	virtual void on_answer(std::string const & s);  //!< server answer on request \saa ask()
@@ -43,7 +43,7 @@ protected:
 private:
 	void loop();
 	void handle_monitor_events();
-	void install_monitors_internal();
+	void install_monitors();
 
 	std::shared_ptr<zmq::context_t> _ctx;
 	zmq::socket_t * _subscriber;
@@ -54,8 +54,12 @@ private:
 	zmq::socket_t * _requester_mon;
 	zmq::socket_t * _notifier_mon;
 	zmq::poller _socks;
+	size_t _subscriber_idx, _requester_idx, _inproc_idx;
+	size_t _subscriber_mon_idx, _requester_mon_idx, _notifier_mon_idx;
 	bool _quit;
-	bool _running;  // TODO: make atomic
+	bool _running;
+	std::string _host;
+	short _subscriber_port, _requester_port, _notifier_port;
 };
 
 }  // zmq

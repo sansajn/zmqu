@@ -3,9 +3,10 @@
 
 namespace zmq {
 
-void poller::add(zmq::socket_t & sock, short revents)  // TODO: rename -> revent are events
+size_t poller::add(zmq::socket_t & sock, short revents)
 {
 	_items.push_back(zmq_pollitem_t{(void *)sock, 0, revents, 0});
+	return _items.size()-1;
 }
 
 void poller::poll(std::chrono::milliseconds timeout)
@@ -15,7 +16,7 @@ void poller::poll(std::chrono::milliseconds timeout)
 		throw std::runtime_error{"zmq_poll() failed"};
 }
 
-bool poller::has_input(size_t idx) const  // has_input
+bool poller::has_input(size_t idx) const
 {
 	return events(idx) & ZMQ_POLLIN;
 }

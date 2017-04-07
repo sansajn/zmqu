@@ -30,8 +30,12 @@ env.Program([
 	'tests.cpp',
 	'test_clone_client.cpp',
 	'test_varargs_recv_send.cpp',
+	'test_cclient_cserv.cpp',
+	'test_clone_server.cpp',
 	zmqu_objs
 ])
+
+env.Program(['monit.cpp', zmqu_objs])
 
 # legacy
 env.Program(['legacy/rrserv.cpp', zmqu_objs])

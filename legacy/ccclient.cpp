@@ -124,8 +124,6 @@ int main(int argc, char * argv[])
 	std::thread client_thread{&dummy_client::start, &client};
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
-	client.install_monitors(client_mailbox);
-
 	std::default_random_engine drand(time(0));
 	string whoami = to_string(drand());
 

@@ -19,11 +19,10 @@ public:
 	virtual void publish(mailbox & m, std::string const & news);  //!< publish to all subscribers (PUB socket)
 	virtual void command(mailbox & m, std::string const & cmd);  //!< quit, install_monitors
 
-	mailbox create_mailbox() const;  //!< \note needs to be called after bind
+	mailbox create_mailbox() const;  //!< \note needs to be called after start()
 
 	// commands
 	void quit(mailbox & m) const;
-	void install_monitors(mailbox & m) const;  // BUG: needs to be called before start()
 
 	virtual std::string on_question(std::string const & question);  //!< client question (ROUTER socket)
 	virtual void on_notify(std::string const & s);  //!< notify message from client (PULL socket)
@@ -40,7 +39,7 @@ protected:
 private:
 	void loop();
 	void handle_monitor_events();
-	void install_monitors_internal();
+	void install_monitors();
 
 	std::shared_ptr<zmq::context_t> _ctx;
 	zmq::socket_t * _publisher;
@@ -51,8 +50,12 @@ private:
 	zmq::socket_t * _responder_mon;
 	zmq::socket_t * _collector_mon;
 	zmq::poller _socks;
+	size_t _responder_idx, _collector_idx, _inproc_idx;
+	size_t _publisher_mon_idx, _responder_mon_idx, _collector_mon_idx;
 	bool _quit;
-	bool _running;  // TODO: make atomic
+	bool _running;
+	std::string _host;
+	short _publisher_port, _responder_port, _collector_port;
 };
 
 }  // zmq

@@ -132,12 +132,9 @@ int main(int argc, char * argv[])
 {
 	dummy_server server;
 	server.bind(5556);
-	zmq::mailbox server_mailbox = server.create_mailbox();
 
 	std::thread server_thread{&dummy_server::start, &server};
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
-
-	server.install_monitors(server_mailbox);
 
 	server_thread.join();
 
