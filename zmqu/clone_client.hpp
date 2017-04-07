@@ -29,19 +29,24 @@ public:
 
 	virtual void on_news(std::string const & s);  //!< a news from publisher
 	virtual void on_answer(std::string const & s);  //!< server answer on request \saa ask()
+
+	// socket events
+	virtual void on_connected(socket_id sid, std::string const & addr);
+	virtual void on_closed(socket_id sid, std::string const & addr);
 	virtual void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 
-	// monitoring api
+	// state monitoring api
 	virtual void on_wait();
 	virtual void on_receive();
 
 protected:
-	virtual void idle();  //!< called once each loop, TODO: find a better name
+	virtual void idle();  //!< called once each loop
 	void ask_internal(std::string const & s);
 	void notify_internal(std::string const & s);
 
 private:
 	void loop();
+	void socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 	void handle_monitor_events();
 	void install_monitors();
 

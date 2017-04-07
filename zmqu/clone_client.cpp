@@ -160,20 +160,36 @@ void clone_client::handle_monitor_events()
 	if (_subscriber_mon && _socks.has_input(_subscriber_mon_idx))
 	{
 		read_monitor_event(*_subscriber_mon, e, addr);
-		on_socket_event(SUBSCRIBER, e, addr);
+		socket_event(SUBSCRIBER, e, addr);
 	}
 
 	if (_requester_mon && _socks.has_input(_requester_mon_idx))
 	{
 		read_monitor_event(*_requester_mon, e, addr);
-		on_socket_event(REQUESTER, e, addr);
+		socket_event(REQUESTER, e, addr);
 	}
 
 	if (_notifier_mon && _socks.has_input(_notifier_mon_idx))
 	{
 		read_monitor_event(*_notifier_mon, e, addr);
-		on_socket_event(NOTIFIER, e, addr);
+		socket_event(NOTIFIER, e, addr);
 	}
+}
+
+void clone_client::socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
+{
+	switch (e.event)
+	{
+		case ZMQ_EVENT_CONNECTED:
+			on_connected(sid, addr);
+			break;
+
+		case ZMQ_EVENT_CLOSED:
+			on_closed(sid, addr);
+			break;
+	}
+
+	on_socket_event(sid, e, addr);
 }
 
 
@@ -226,6 +242,12 @@ void clone_client::on_news(string const & s)
 {}
 
 void clone_client::on_answer(string const & s)
+{}
+
+void clone_client::on_connected(socket_id sid, std::string const & addr)
+{}
+
+void clone_client::on_closed(socket_id sid, std::string const & addr)
 {}
 
 void clone_client::on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
