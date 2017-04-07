@@ -12,9 +12,9 @@ int main(int argc, char * argv[])
 	std::string name{"Jane"};
 	int age = 32;
 	double salary = 2400.0;
-	zmq::send(requester, name, age, salary);
+	zmqu::send(requester, name, age, salary);
 
-	std::string s = zmq::recv(requester);
+	std::string s = zmqu::recv(requester);
 
 	std::cout << "done!" << std::endl;
 	return 0;

@@ -9,9 +9,9 @@ int main(int argc, char * argv[])
 
 	while (true)
 	{
-		std::string s = zmq::recv(responder);
+		std::string s = zmqu::recv(responder);
 		std::cout << s << std::endl;
-		zmq::send(responder, "world");
+		zmqu::send(responder, "world");
 	}
 
 	return 0;

@@ -9,7 +9,7 @@
 using std::string;
 using std::cout;
 
-struct dummy_server : public zmq::clone_server
+struct dummy_server : public zmqu::clone_server
 {
 	string question;
 	bool accepted = false;
@@ -30,7 +30,7 @@ struct dummy_server : public zmq::clone_server
 	}
 };
 
-struct dummy_client : public zmq::clone_client
+struct dummy_client : public zmqu::clone_client
 {
 	string news, answer;
 	bool connected = false;
@@ -58,11 +58,11 @@ TEST(cclient_cserv_test, basic)
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
 	// publish news
-	zmq::mailbox serv_mail = serv.create_mailbox();
+	zmqu::mailbox serv_mail = serv.create_mailbox();
 	serv.publish(serv_mail, "Patric Jane");
 
 	// ask server
-	zmq::mailbox client_mail = client.create_mailbox();
+	zmqu::mailbox client_mail = client.create_mailbox();
 	client.ask(client_mail, "who else?");
 
 	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wait for zmq

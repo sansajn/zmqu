@@ -2,7 +2,7 @@
 #include <sstream>
 #include <boost/property_tree/json_parser.hpp>
 
-namespace zmq {
+namespace zmqu {
 
 using std::string;
 using std::stringstream;

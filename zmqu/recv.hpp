@@ -4,7 +4,7 @@
 #include <zmq.hpp>
 #include "json.hpp"
 
-namespace zmq {
+namespace zmqu {
 
 std::string recv(zmq::socket_t & sock);
 void recv_json(zmq::socket_t & sock, jtree & json);

@@ -1,7 +1,7 @@
 #include "clone_server.hpp"
 #include <iostream>
 
-namespace zmq {
+namespace zmqu {
 
 using std::string;
 using std::to_string;
@@ -112,7 +112,7 @@ void clone_server::idle()
 
 void clone_server::publish_internal(std::string const & s)
 {
-	zmq::send(*_publisher, s);
+	zmqu::send(*_publisher, s);
 }
 
 std::string clone_server::on_question(std::string const &)
@@ -147,18 +147,18 @@ void clone_server::loop()
 		{
 			on_receive();
 			vector<string> msgs;
-			zmq::recv(*_responder, msgs);
+			zmqu::recv(*_responder, msgs);
 			assert(msgs.size() == 2 && "(identity, message) expected");
 
 			msgs[1] = on_question(msgs[1]);
 
-			zmq::send(*_responder, msgs);
+			zmqu::send(*_responder, msgs);
 		}
 
 		if (_socks.has_input(_collector_idx))  // collector
 		{
 			on_receive();
-			string m = zmq::recv(*_collector);
+			string m = zmqu::recv(*_collector);
 			on_notify(m);
 		}
 
@@ -166,7 +166,7 @@ void clone_server::loop()
 		{
 			on_receive();
 			vector<string> msgs;
-			zmq::recv(*_inproc, msgs);
+			zmqu::recv(*_inproc, msgs);
 			assert(msgs.size() == 2 && "(title, message) expected");
 			string & command = msgs[0];
 			string & content = msgs[1];
@@ -197,19 +197,19 @@ void clone_server::handle_monitor_events()
 
 	if (_publisher_mon && _socks.has_input(_publisher_mon_idx))
 	{
-		zmq::recv(*_publisher_mon, e, addr);
+		zmqu::recv(*_publisher_mon, e, addr);
 		on_socket_event(PUBLISHER, e, addr);
 	}
 
 	if (_responder_mon && _socks.has_input(_responder_mon_idx))
 	{
-		zmq::recv(*_responder_mon, e, addr);
+		zmqu::recv(*_responder_mon, e, addr);
 		on_socket_event(RESPONDER, e, addr);
 	}
 
 	if (_collector_mon && _socks.has_input(_collector_mon_idx))
 	{
-		zmq::recv(*_collector_mon, e, addr);
+		zmqu::recv(*_collector_mon, e, addr);
 		on_socket_event(COLLECTOR, e, addr);
 	}
 }

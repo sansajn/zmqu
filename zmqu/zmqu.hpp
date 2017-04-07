@@ -7,8 +7,9 @@
 #include "poller.hpp"
 #include "mailbox.hpp"
 
-namespace zmq {
+namespace zmqu {
 
+// TODO: move to cast module
 std::string event_to_string(int event);
 
-}   // zmq
+}  // zmqu

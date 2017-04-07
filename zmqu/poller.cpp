@@ -1,7 +1,7 @@
 #include "poller.hpp"
 #include <stdexcept>
 
-namespace zmq {
+namespace zmqu {
 
 size_t poller::add(zmq::socket_t & sock, short revents)
 {

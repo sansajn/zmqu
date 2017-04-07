@@ -3,7 +3,7 @@
 #include <vector>
 #include <iostream>
 
-namespace zmq {
+namespace zmqu {
 
 using std::string;
 using std::to_string;
@@ -110,7 +110,7 @@ void clone_client::loop()
 		{
 			on_receive();  // notify, we are received a message
 			string s;
-			zmq::recv(*_subscriber, s);
+			zmqu::recv(*_subscriber, s);
 			on_news(s);
 		}
 
@@ -118,7 +118,7 @@ void clone_client::loop()
 		{
 			on_receive();
 			vector<string> msgs;
-			zmq::recv(*_inproc, msgs);
+			zmqu::recv(*_inproc, msgs);
 			assert(msgs.size() == 2 && "two frame message expected (command:int, content:string)");
 			string & command = msgs[0];
 			string & content = msgs[1];
@@ -140,7 +140,7 @@ void clone_client::loop()
 		{
 			on_receive();  // notify, we are received a message
 			string s;
-			zmq::recv(*_requester, s);
+			zmqu::recv(*_requester, s);
 			on_answer(s);
 		}
 
@@ -242,17 +242,17 @@ void clone_client::idle()
 
 void clone_client::ask_internal(std::string const & s)
 {
-	zmq::send(*_requester, s);
+	zmqu::send(*_requester, s);
 }
 
 void clone_client::notify_internal(std::string const & s)
 {
-	zmq::send(*_notifier, s);
+	zmqu::send(*_notifier, s);
 }
 
 void read_monitor_event(zmq::socket_t & sock, zmq_event_t & e, std::string & addr)
 {
-	zmq::recv(sock, e, addr);
+	zmqu::recv(sock, e, addr);
 }
 
 }  // zmq

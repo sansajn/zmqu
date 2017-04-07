@@ -1,7 +1,7 @@
 #pragma once
 #include "zmqu/zmqu.hpp"
 
-namespace zmq {
+namespace zmqu {
 
 //! Multithread safe ZeroMQ clone pattern server implementation.
 class clone_server
@@ -49,7 +49,7 @@ private:
 	zmq::socket_t * _publisher_mon;
 	zmq::socket_t * _responder_mon;
 	zmq::socket_t * _collector_mon;
-	zmq::poller _socks;
+	zmqu::poller _socks;
 	size_t _responder_idx, _collector_idx, _inproc_idx;
 	size_t _publisher_mon_idx, _responder_mon_idx, _collector_mon_idx;
 	bool _quit;

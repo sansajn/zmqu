@@ -1,6 +1,6 @@
 #include "zmqu.hpp"
 
-namespace zmq {
+namespace zmqu {
 
 using std::string;
 

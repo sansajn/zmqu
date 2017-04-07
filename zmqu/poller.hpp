@@ -3,7 +3,7 @@
 #include <chrono>
 #include <zmq.hpp>
 
-namespace zmq {
+namespace zmqu {
 
 // TODO: include example, how to use it
 class poller

@@ -17,11 +17,11 @@ void simple_varargs_client(zmq::context_t & ctx)
 	string name{"Jane"};
 	int age = 32;
 	double salary = 2400.0;
-	zmq::send_multipart(requester, name);
-	zmq::send_multipart(requester, age);
-	zmq::send(requester, salary);
+	zmqu::send_multipart(requester, name);
+	zmqu::send_multipart(requester, age);
+	zmqu::send(requester, salary);
 
-	string s = zmq::recv(requester);
+	string s = zmqu::recv(requester);
 
 	// done
 }
@@ -35,9 +35,9 @@ void simple_varargs_client_with_varargs_send(zmq::context_t & ctx)
 	string name{"Jane"};
 	int age = 32;
 	double salary = 2400.0;
-	zmq::send(requester, name, age, salary);
+	zmqu::send(requester, name, age, salary);
 
-	string s = zmq::recv(requester);
+	string s = zmqu::recv(requester);
 
 	// done
 }
@@ -56,7 +56,7 @@ TEST(variable_arguments, receive_test)
 	string name;
 	int age;
 	double salary;
-	recv(responder, name, age, salary);
+	zmqu::recv(responder, name, age, salary);
 
 	EXPECT_EQ(string{"Jane"}, name);
 	EXPECT_EQ(32, age);
@@ -81,7 +81,7 @@ TEST(variable_arguments, send_receive_test)
 	string name;
 	int age;
 	double salary;
-	recv(responder, name, age, salary);
+	zmqu::recv(responder, name, age, salary);
 
 	EXPECT_EQ(string{"Jane"}, name);
 	EXPECT_EQ(32, age);

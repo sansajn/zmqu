@@ -4,7 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <zmq.hpp>
 
-namespace zmq {
+namespace zmqu {
 
 class mailbox
 	: private boost::noncopyable

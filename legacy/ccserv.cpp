@@ -22,7 +22,7 @@ using hres_clock = std::chrono::high_resolution_clock;
 void dump_clients(std::map<unsigned, string> const & clients);
 
 
-struct dummy_server : public zmq::clone_server
+struct dummy_server : public zmqu::clone_server
 {
 	dummy_server();
 
@@ -107,7 +107,7 @@ void dummy_server::on_socket_event(socket_id sid, zmq_event_t const & e, string 
 			break;
 	}
 
-	cout << "event: socket:" << sock_name << ", event:" << zmq::event_to_string(e.event) << ", addr:" << addr << std::endl;
+	cout << "event: socket:" << sock_name << ", event:" << zmqu::event_to_string(e.event) << ", addr:" << addr << std::endl;
 }
 
 

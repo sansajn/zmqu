@@ -2,7 +2,7 @@
 #include <utility>
 #include "send.hpp"
 
-namespace zmq {
+namespace zmqu {
 
 using std::swap;
 
@@ -35,7 +35,7 @@ mailbox::~mailbox()
 
 void mailbox::send(char const * command, std::string const & message)
 {
-	zmq::send(*_inproc, command, message);
+	zmqu::send(*_inproc, command, message);
 }
 
 }  // zmq

@@ -7,19 +7,19 @@
 using std::string;
 using std::shared_ptr;
 
-struct dummy_client_subscribe_test : public zmq::clone_client
+struct dummy_client_subscribe_test : public zmqu::clone_client
 {
 	string last_news;
 	void on_news(std::string const & s) override {last_news = s;}
 };
 
-struct dummy_client_ask_test : public zmq::clone_client
+struct dummy_client_ask_test : public zmqu::clone_client
 {
 	string last_answer;
 	void on_answer(std::string const & s) override {last_answer = s;}
 };
 
-struct dummy_client_monitoring_test : public zmq::clone_client
+struct dummy_client_monitoring_test : public zmqu::clone_client
 {
 	int subscriber_state = -1;
 	int requester_state = -1;
@@ -52,13 +52,13 @@ TEST(clone_client_test, subscribe)
 
 	dummy_client_subscribe_test client;
 	client.connect("localhost", 5556);
-	zmq::mailbox client_mail = client.create_mailbox();
+	zmqu::mailbox client_mail = client.create_mailbox();
 	std::thread client_thread{&dummy_client_subscribe_test::start, &client};  // run client
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
 	// send a news to client
 	string expected{"hello jane!"};
-	zmq::send(socket, expected);
+	zmqu::send(socket, expected);
 
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
 
@@ -77,7 +77,7 @@ TEST(clone_client_test, ask)
 
 	dummy_client_ask_test client;
 	client.connect("localhost", 5556, 5557, 5558);
-	zmq::mailbox client_mail = client.create_mailbox();
+	zmqu::mailbox client_mail = client.create_mailbox();
 	std::thread client_thread{&dummy_client_ask_test::start, &client};  // run client
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
@@ -90,12 +90,12 @@ TEST(clone_client_test, ask)
 	zmq::message_t identity;
 	responder.recv(&identity);
 
-	string message = zmq::recv(responder);
+	string message = zmqu::recv(responder);
 	EXPECT_EQ(question, message);
 
 	// answer
 	responder.send(identity, ZMQ_SNDMORE);
-	zmq::send(responder, answer);
+	zmqu::send(responder, answer);
 
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
 
@@ -113,14 +113,14 @@ TEST(clone_client_test, notify)
 
 	dummy_client_ask_test client;
 	client.connect("localhost", 5556, 5557, 5558);
-	zmq::mailbox client_mail = client.create_mailbox();
+	zmqu::mailbox client_mail = client.create_mailbox();
 	std::thread client_thread{&dummy_client_ask_test::start, &client};  // run client
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
 	string notify_msg = "Teresa ready";
 	client.notify(client_mail, notify_msg);
 
-	string msg = zmq::recv(collector);
+	string msg = zmqu::recv(collector);
 
 	EXPECT_EQ(notify_msg, msg);
 
@@ -157,7 +157,7 @@ TEST(clone_client_test, monitoring)
 	EXPECT_EQ(ZMQ_EVENT_CONNECTED, client.notifier_state);
 
 	// quit
-	zmq::mailbox client_mail = client.create_mailbox();
+	zmqu::mailbox client_mail = client.create_mailbox();
 	client.quit(client_mail);
 
 	client_thread.join();

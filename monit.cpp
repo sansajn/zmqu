@@ -7,7 +7,7 @@
 using std::string;
 using std::cout;
 
-struct dummy_client_subscribe_impl : public zmq::clone_client
+struct dummy_client_subscribe_impl : public zmqu::clone_client
 {
 	string last_news;
 
@@ -88,14 +88,14 @@ int main(int argc, char * argv[])
 
 	// send a news to client
 	string expected{"hello jane!"};
-	zmq::send(serv, expected);
+	zmqu::send(serv, expected);
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
 
 	cout << client.last_news;
 
 	// wait and quit
 	std::this_thread::sleep_for(std::chrono::seconds{3});
-	zmq::mailbox client_mail = client.create_mailbox();
+	zmqu::mailbox client_mail = client.create_mailbox();
 	client.quit(client_mail);
 	client_thread.join();
 	cout << "done!" << std::endl;

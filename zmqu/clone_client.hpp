@@ -3,7 +3,7 @@
 #include <memory>
 #include "zmqu/zmqu.hpp"
 
-namespace zmq {
+namespace zmqu {
 
 /*! Multithread safe ZeroMQ clone pattern client implementation.
 TODO: insert documentation reference */
@@ -53,7 +53,7 @@ private:
 	zmq::socket_t * _subscriber_mon;
 	zmq::socket_t * _requester_mon;
 	zmq::socket_t * _notifier_mon;
-	zmq::poller _socks;
+	zmqu::poller _socks;
 	size_t _subscriber_idx, _requester_idx, _inproc_idx;
 	size_t _subscriber_mon_idx, _requester_mon_idx, _notifier_mon_idx;
 	bool _quit;

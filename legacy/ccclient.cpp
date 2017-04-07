@@ -21,7 +21,7 @@ using std::make_pair;
 
 using hres_clock = std::chrono::high_resolution_clock;
 
-struct dummy_client : public zmq::clone_client
+struct dummy_client : public zmqu::clone_client
 {
 	dummy_client();
 
@@ -111,7 +111,7 @@ void dummy_client::on_socket_event(socket_id sid, zmq_event_t const & e, string 
 			break;
 	}
 
-	cout << "event: socket:" << sock_name << ", event:" << zmq::event_to_string(e.event) << ", addr:" << addr << std::endl;
+	cout << "event: socket:" << sock_name << ", event:" << zmqu::event_to_string(e.event) << ", addr:" << addr << std::endl;
 }
 
 
@@ -119,7 +119,7 @@ int main(int argc, char * argv[])
 {
 	dummy_client client;
 	client.connect("localhost", 5556);  // ports 5556, 5557 and 5558 will be used
-	zmq::mailbox client_mailbox = client.create_mailbox();
+	zmqu::mailbox client_mailbox = client.create_mailbox();
 
 	std::thread client_thread{&dummy_client::start, &client};
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread

@@ -4,7 +4,7 @@
 #include <zmq.hpp>
 #include "json.hpp"
 
-namespace zmq {
+namespace zmqu {
 
 void send_json(zmq::socket_t & sock, jtree & json);
 
