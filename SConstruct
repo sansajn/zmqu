@@ -36,6 +36,8 @@ env.Program([
 ])
 
 env.Program(['monit.cpp', zmqu_objs])
+env.Program(['sub.cpp', zmqu_objs])
+env.Program(['pub.cpp', zmqu_objs])
 
 # legacy
 env.Program(['legacy/rrserv.cpp', zmqu_objs])
