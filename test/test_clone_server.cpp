@@ -2,7 +2,7 @@
 #include <string>
 #include <thread>
 #include <iostream>
-#include <gtest/gtest.h>
+#include <catch.hpp>
 #include "zmqu/clone_server.hpp"
 #include "zmqu/clone_client.hpp"
 
@@ -45,7 +45,7 @@ struct dummy_client : public zmqu::clone_client
 	}
 };
 
-TEST(cclient_cserv_test, basic)
+TEST_CASE("clone server can publish news", "[clone_server]")
 {
 	dummy_server serv;
 	serv.bind(5556);
@@ -53,7 +53,7 @@ TEST(cclient_cserv_test, basic)
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
 	dummy_client client;
-	client.connect("localhost", 5556);
+	client.connect("localhost", 5556, 5557, 5558);
 	std::thread client_thread{&dummy_client::start, &client};
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
@@ -62,19 +62,18 @@ TEST(cclient_cserv_test, basic)
 	serv.publish(serv_mail, "Patric Jane");
 
 	// ask server
-	zmqu::mailbox client_mail = client.create_mailbox();
-	client.ask(client_mail, "who else?");
+	client.ask("who else?");
 
 	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wait for zmq
 
-	EXPECT_TRUE(serv.accepted);
-	EXPECT_TRUE(client.connected);
-	EXPECT_EQ("Patric Jane", client.news);
-	EXPECT_EQ("who else?", serv.question);
-	EXPECT_EQ("Teresa Lisbon", client.answer);
+	REQUIRE(serv.accepted);
+	REQUIRE(client.connected);
+	REQUIRE(client.news == "Patric Jane");
+	REQUIRE(serv.question == "who else?");
+	REQUIRE(client.answer == "Teresa Lisbon");
 
 	// quit
-	client.quit(client_mail);
+	client.quit();
 	serv.quit(serv_mail);
 
 	serv_thread.join();

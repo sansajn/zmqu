@@ -9,6 +9,11 @@ size_t poller::add(zmq::socket_t & sock, short revents)
 	return _items.size()-1;
 }
 
+void poller::try_poll()
+{
+	poll(std::chrono::milliseconds{0});
+}
+
 void poller::poll(std::chrono::milliseconds timeout)
 {
 	int rc = zmq_poll(const_cast<zmq_pollitem_t *>(_items.data()), _items.size(), timeout.count());

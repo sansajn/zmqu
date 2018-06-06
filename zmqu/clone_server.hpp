@@ -26,6 +26,10 @@ public:
 
 	virtual std::string on_question(std::string const & question);  //!< client question (ROUTER socket)
 	virtual void on_notify(std::string const & s);  //!< notify message from client (PULL socket)
+
+	// socket events
+	virtual void on_accepted(socket_id sid, std::string const & addr);
+	virtual void on_disconnected(socket_id sid, std::string const & addr);
 	virtual void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 
 	// monitoring
@@ -38,6 +42,7 @@ protected:
 
 private:
 	void loop();
+	void socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 	void handle_monitor_events();
 	void install_monitors();
 

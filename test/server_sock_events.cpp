@@ -1,4 +1,4 @@
-// simple publisher implementation
+// clone server socket events
 #include <thread>
 #include <iostream>
 #include "zmqu/clone_server.hpp"

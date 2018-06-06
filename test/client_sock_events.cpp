@@ -1,4 +1,4 @@
-// client events
+// socket event sample
 #include <string>
 #include <thread>
 #include <iostream>
@@ -6,7 +6,7 @@
 
 using std::cout;
 
-struct subscriber_impl : public zmqu::clone_client
+struct socket_event_client_impl : public zmqu::clone_client
 {
 	void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr) override;
 };
@@ -14,12 +14,12 @@ struct subscriber_impl : public zmqu::clone_client
 
 int main(int argc, char * argv[])
 {
-	cout << "listenning: ..." << std::endl;
+	cout << "listenning ..." << std::endl;
 
-	subscriber_impl sub;
-	sub.connect("localhost", 7777);
-	std::thread t{&subscriber_impl::start, &sub};
-	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wayt for thread
+	socket_event_client_impl sub;
+	sub.connect("localhost", 8876, 8877, 8878);
+	std::thread t{&socket_event_client_impl::start, &sub};
+	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wait for thread
 
 	t.join();  // loop ...
 
@@ -27,13 +27,13 @@ int main(int argc, char * argv[])
 }
 
 
-void subscriber_impl::on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
+void socket_event_client_impl::on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
 {
 	cout << "on_socket_event(), ";
 	switch (e.event)
 	{
 		case ZMQ_EVENT_CONNECTED:
-			cout << " CONNECTED, sid:" << sid;
+			cout << "CONNECTED, sid:" << sid;
 			break;
 
 		case ZMQ_EVENT_DISCONNECTED:

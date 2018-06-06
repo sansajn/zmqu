@@ -1,7 +1,8 @@
 *.o
 
-.sconsign.dblite
-.directory
+/utest
+/.sconsign.dblite
+/.directory
 
 zmqu.creator
 zmqu.creator.user
@@ -9,3 +10,11 @@ zmqu.files
 zmqu.includes
 zmqu.config
 
+/legacy/ccclient
+/legacy/ccserv
+/legacy/rrserv
+/legacy/varargs_recv_client
+
+/test/client_sock_events
+/test/server_sock_events
+/test/test_clone_client_q

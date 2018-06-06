@@ -14,6 +14,7 @@ public:
 		\return returns socket id you can use in has_xxx functions */
 	size_t add(zmq::socket_t & sock, short revents = ZMQ_POLLIN);
 
+	void try_poll();  //!< non blocking poll
 	void poll(std::chrono::milliseconds timeout);
 	bool has_input(size_t idx) const;
 	bool has_output(size_t idx) const;

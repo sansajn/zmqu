@@ -1,8 +1,9 @@
 // variable argument receive sample
 #include <iostream>
 #include <thread>
-#include <gtest/gtest.h>
-#include "zmqu/zmqu.hpp"
+#include <catch.hpp>
+#include <zmqu/recv.hpp>
+#include <zmqu/send.hpp>
 
 using std::string;
 using std::cout;
@@ -43,7 +44,7 @@ void simple_varargs_client_with_varargs_send(zmq::context_t & ctx)
 }
 
 
-TEST(variable_arguments, receive_test)
+TEST_CASE("receive more variables with multipart send", "[recv,send]")
 {
 	zmq::context_t ctx;
 	zmq::socket_t responder{ctx, ZMQ_REP};
@@ -58,9 +59,9 @@ TEST(variable_arguments, receive_test)
 	double salary;
 	zmqu::recv(responder, name, age, salary);
 
-	EXPECT_EQ(string{"Jane"}, name);
-	EXPECT_EQ(32, age);
-	EXPECT_EQ(2400.0, salary);
+	REQUIRE(name == string{"Jane"});
+	REQUIRE(age == 32);
+	REQUIRE(salary == 2400.0);
 
 	responder.send("ok", 2);
 
@@ -68,7 +69,7 @@ TEST(variable_arguments, receive_test)
 }
 
 
-TEST(variable_arguments, send_receive_test)
+TEST_CASE("receive more variables with single send", "[recv,send")
 {
 	zmq::context_t ctx;
 	zmq::socket_t responder{ctx, ZMQ_REP};
@@ -83,9 +84,9 @@ TEST(variable_arguments, send_receive_test)
 	double salary;
 	zmqu::recv(responder, name, age, salary);
 
-	EXPECT_EQ(string{"Jane"}, name);
-	EXPECT_EQ(32, age);
-	EXPECT_EQ(2400.0, salary);
+	REQUIRE(name == string{"Jane"});
+	REQUIRE(age == 32);
+	REQUIRE(salary == 2400.0);
 
 	responder.send("ok", 2);
 

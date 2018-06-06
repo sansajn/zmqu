@@ -25,6 +25,11 @@ void mailbox::operator=(mailbox && rhs)
 	swap(_inproc, rhs._inproc);
 }
 
+mailbox::operator bool() const
+{
+	return _inproc != nullptr;
+}
+
 mailbox::~mailbox()
 {
 	if (_inproc)

@@ -17,6 +17,7 @@ public:
 
 	mailbox(mailbox && rhs);
 	void operator=(mailbox && rhs);
+	explicit operator bool() const;
 
 private:
 	zmq::socket_t * _inproc;

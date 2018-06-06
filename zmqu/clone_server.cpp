@@ -123,8 +123,30 @@ std::string clone_server::on_question(std::string const &)
 void clone_server::on_notify(std::string const &)
 {}
 
+void clone_server::on_accepted(socket_id, std::string const &)
+{}
+
+void clone_server::on_disconnected(socket_id, std::string const &)
+{}
+
 void clone_server::on_socket_event(socket_id, zmq_event_t const &, std::string const &)
 {}
+
+void clone_server::socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
+{
+	switch (e.event)
+	{
+		case ZMQ_EVENT_ACCEPTED:
+			on_accepted(sid, addr);
+			break;
+
+		case ZMQ_EVENT_DISCONNECTED:
+			on_disconnected(sid, addr);
+			break;
+	}
+
+	on_socket_event(sid, e, addr);
+}
 
 void clone_server::on_wait()
 {}
@@ -198,19 +220,19 @@ void clone_server::handle_monitor_events()
 	if (_publisher_mon && _socks.has_input(_publisher_mon_idx))
 	{
 		zmqu::recv(*_publisher_mon, e, addr);
-		on_socket_event(PUBLISHER, e, addr);
+		socket_event(PUBLISHER, e, addr);
 	}
 
 	if (_responder_mon && _socks.has_input(_responder_mon_idx))
 	{
 		zmqu::recv(*_responder_mon, e, addr);
-		on_socket_event(RESPONDER, e, addr);
+		socket_event(RESPONDER, e, addr);
 	}
 
 	if (_collector_mon && _socks.has_input(_collector_mon_idx))
 	{
 		zmqu::recv(*_collector_mon, e, addr);
-		on_socket_event(COLLECTOR, e, addr);
+		socket_event(COLLECTOR, e, addr);
 	}
 }
 
