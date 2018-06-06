@@ -127,7 +127,7 @@ TEST_CASE("clone client notify channel test", "[clone_client]")
 	client_thread.join();
 }
 
-TEST_CASE("clone client socket events test", "[clone_client]")
+TEST_CASE("clone client socket events monitoring test", "[clone_client]")
 {
 	// dummy server
 	shared_ptr<zmq::context_t> ctx{new zmq::context_t};

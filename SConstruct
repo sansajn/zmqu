@@ -40,9 +40,6 @@ test_env.Program('utest', [
 env.Program(['test/client_sock_events.cpp', zmqu_objs])
 env.Program(['test/server_sock_events.cpp', zmqu_objs])
 
-# experimental
-env.Program(['test/test_clone_client_q.cpp', zmqu_objs])
-
 # legacy
 #env.Program(['legacy/rrserv.cpp', zmqu_objs])
 #env.Program(['legacy/rrclient.cpp', zmqu_objs])
