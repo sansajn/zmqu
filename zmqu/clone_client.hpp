@@ -42,8 +42,8 @@ public:
 
 	virtual void connect(std::string const & host, short news_port, short ask_port, short notification_port);
 	virtual void start();
-	void ask(std::string const & question) const;  //!< ask server
-	void notify(std::string const & news) const;  //!< notify server
+	virtual void ask(std::string const & question) const;  //!< ask server
+	virtual void notify(std::string const & news) const;  //!< notify server
 	virtual void idle();
 	virtual void quit();  //!< transparent async quit
 
