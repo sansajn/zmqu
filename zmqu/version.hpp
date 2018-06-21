@@ -1,6 +1,6 @@
 #pragma once
 
-static unsigned VERSION = 20170407;
+static unsigned VERSION = 20180621;
 
 namespace zmqu {
 
