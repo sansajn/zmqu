@@ -26,6 +26,8 @@ public:
 	bool empty() const;
 
 private:
+	using lock_guard = std::lock_guard<std::mutex>;
+
 	std::queue<T> _data;
 	mutable std::mutex _m;
 	std::condition_variable _cond;
@@ -39,14 +41,14 @@ concurrent_queue<T>::concurrent_queue()
 template<typename T>
 concurrent_queue<T>::concurrent_queue(concurrent_queue const & rhs)
 {
-	std::lock_guard<std::mutex> lk{rhs._m};
+	lock_guard lk{rhs._m};
 	_data = rhs._data;
 }
 
 template<typename T>
 void concurrent_queue<T>::push(T x)
 {
-	std::lock_guard<std::mutex> lk{_m};
+	lock_guard lk{_m};
 	_data.push(x);
 	_cond.notify_one();
 }
@@ -86,7 +88,7 @@ std::shared_ptr<T> concurrent_queue<T>::wait_and_pop()
 template<typename T>
 bool concurrent_queue<T>::try_pop(T & result)
 {
-	std::lock_guard<std::mutex> lk{_m};
+	lock_guard lk{_m};
 	if (_data.empty())
 		return false;
 	result = _data.front();
@@ -97,7 +99,7 @@ bool concurrent_queue<T>::try_pop(T & result)
 template<typename T>
 std::shared_ptr<T> concurrent_queue<T>::try_pop()
 {
-	std::lock_guard<std::mutex> lk{_m};
+	lock_guard lk{_m};
 	if (_data.empty())
 		return std::shared_ptr<T>{};
 	std::shared_ptr<T> result{std::make_shared<T>(_data.front())};
@@ -108,6 +110,6 @@ std::shared_ptr<T> concurrent_queue<T>::try_pop()
 template<typename T>
 bool concurrent_queue<T>::empty() const
 {
-	std::lock_guard<std::mutex> lk{_m};
+	lock_guard lk{_m};
 	return _data.empty();
 }

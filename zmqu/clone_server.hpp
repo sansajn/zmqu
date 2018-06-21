@@ -1,66 +1,70 @@
 #pragma once
-#include "zmqu/zmqu.hpp"
+#include <atomic>
+#include <string>
+#include <zmq.hpp>
+#include "concurrent_queue.hpp"
 
 namespace zmqu {
 
-//! Multithread safe ZeroMQ clone pattern server implementation.
+/*! Multithread safe (queue based) ZeroMQ clone pattern server implementation.
+\code
+	void foo()
+	{
+		clone_server serv;
+		serv.bind("*", 5555, 5556, 5557);
+		std::thread t{&clone_server::start, serv};
+		serv.publish("Patric Jane");
+		// ...
+		t.join();
+	}
+\endcode */
 class clone_server
 {
 public:
-	enum socket_id {PUBLISHER, RESPONDER, COLLECTOR};
+	enum socket_id
+	{
+		PUBLISHER,  // can only transmit messages (news)
+		RESPONDER, // can receive and transmit messages (question, answer)
+		COLLECTOR  // can only receive a messages (notifications)
+	};
 
 	clone_server();
 	clone_server(std::shared_ptr<zmq::context_t> ctx);
 	virtual ~clone_server();
 
-	virtual void bind(short first_port, std::string const & host = "*");
-	virtual void bind(short publisher_port, short responder_port, short collector_port, std::string const & host = "*");
+	virtual void bind(short news_port, short answer_port, short notification_port);
+	virtual void bind(std::string const & host, short news_port, short answer_port, short notification_port);
 	virtual void start();
-	virtual void publish(mailbox & m, std::string const & news);  //!< publish to all subscribers (PUB socket)
-	virtual void command(mailbox & m, std::string const & cmd);  //!< quit, install_monitors
+	virtual void publish(std::string const & news) const;  // feed ?
+	virtual void quit();
 
-	mailbox create_mailbox() const;  //!< \note needs to be called after start()
+protected:
+	virtual void idle();
 
-	// commands
-	void quit(mailbox & m) const;
-
-	virtual std::string on_question(std::string const & question);  //!< client question (ROUTER socket)
-	virtual void on_notify(std::string const & s);  //!< notify message from client (PULL socket)
+	// client events
+	virtual std::string on_question(std::string const & question);  //!< on client question
+	virtual void on_notify(std::string const & s);  //!< on client notification
 
 	// socket events
 	virtual void on_accepted(socket_id sid, std::string const & addr);
 	virtual void on_disconnected(socket_id sid, std::string const & addr);
 	virtual void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 
-	// monitoring
-	virtual void on_wait();
-	virtual void on_receive();
-
-protected:
-	virtual void idle();
-	void publish_internal(std::string const & s);
-
 private:
 	void loop();
-	void socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
-	void handle_monitor_events();
 	void install_monitors();
+	void handle_monitor_events();
+	void socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
+	void free_zmq();
 
 	std::shared_ptr<zmq::context_t> _ctx;
-	zmq::socket_t * _publisher;
-	zmq::socket_t * _responder;
-	zmq::socket_t * _collector;
-	zmq::socket_t * _inproc;
-	zmq::socket_t * _publisher_mon;
-	zmq::socket_t * _responder_mon;
-	zmq::socket_t * _collector_mon;
-	zmqu::poller _socks;
-	size_t _responder_idx, _collector_idx, _inproc_idx;
-	size_t _publisher_mon_idx, _responder_mon_idx, _collector_mon_idx;
-	bool _quit;
-	bool _running;
+	// _thread_ctx_copy
+	zmq::socket_t * _publisher, * _responder, * _collector;
+	std::atomic_bool _running, _quit;
+	mutable concurrent_queue<std::string> _publisher_queue;
 	std::string _host;
-	short _publisher_port, _responder_port, _collector_port;
+	short _news_port, _answer_port, _notification_port;
+	zmq::socket_t * _pub_mon, * _resp_mon, * _coll_mon;
 };
 
 }  // zmq

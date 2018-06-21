@@ -15,7 +15,7 @@ int main(int argc, char * argv[])
 	cout << "broadcasting ..." << std::endl;
 
 	publisher_impl pub;
-	pub.bind(7777, "*");
+	pub.bind("*", 7777, 7778, 7779);
 	std::thread t{&publisher_impl::start, &pub};
 	std::this_thread::sleep_for(std::chrono::milliseconds{100});
 

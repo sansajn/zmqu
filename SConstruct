@@ -30,15 +30,15 @@ test_env = env.Clone()
 
 test_env.Program('utest', [
 	'test/main.cpp',
-	'test/test_varargs_recv_send.cpp',
-	'test/test_clone_client.cpp',
-	'test/test_clone_server.cpp',
+	Glob('test/test_*.cpp'),
 	zmqu_objs
 ])
 
 # samples
 env.Program(['test/client_sock_events.cpp', zmqu_objs])
 env.Program(['test/server_sock_events.cpp', zmqu_objs])
+env.Program(['test/monitor.cpp', zmqu_objs])
+env.Program(['test/recv_vector.cpp', zmqu_objs])
 
 # legacy
 #env.Program(['legacy/rrserv.cpp', zmqu_objs])

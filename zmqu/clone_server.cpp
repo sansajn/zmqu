@@ -1,15 +1,19 @@
-#include "clone_server.hpp"
 #include <iostream>
+#include "send.hpp"
+#include "recv.hpp"
+#include "poller.hpp"
+#include "clone_server.hpp"
 
 namespace zmqu {
+
+constexpr char const * PUBLISHER_MON_ADDR = "inproc://cloneserver.monitor.publisher";
+constexpr char const * RESPONDER_MON_ADDR = "inproc://cloneserver.monitor.responder";
+constexpr char const * COLLECTOR_MON_ADDR = "inproc://cloneserver.monitor.collector";
 
 using std::string;
 using std::to_string;
 using std::vector;
 using std::clog;
-
-static size_t const INVALID_IDX = (size_t)-1;
-static char const * INPROC_SOCKET_ADDRESS = "inproc://cloneserver.mailbox";
 
 clone_server::clone_server()
 	: clone_server(std::shared_ptr<zmq::context_t>{})
@@ -20,49 +24,32 @@ clone_server::clone_server(std::shared_ptr<zmq::context_t> ctx)
 	, _publisher{nullptr}
 	, _responder{nullptr}
 	, _collector{nullptr}
-	, _inproc{nullptr}
-	, _publisher_mon{nullptr}
-	, _responder_mon{nullptr}
-	, _collector_mon{nullptr}
-	, _responder_idx{INVALID_IDX}
-	, _collector_idx{INVALID_IDX}
-	, _inproc_idx{INVALID_IDX}
-	, _publisher_mon_idx{INVALID_IDX}
-	, _responder_mon_idx{INVALID_IDX}
-	, _collector_mon_idx{INVALID_IDX}
-	, _quit{false}
 	, _running{false}
-	, _publisher_port{0}
-	, _responder_port{0}
-	, _collector_port{0}
-{
-	if (!_ctx)
-		_ctx = std::shared_ptr<zmq::context_t>{new zmq::context_t{}};
-}
+	, _quit{false}
+	, _news_port{0}
+	, _answer_port{0}
+	, _notification_port{0}
+	, _pub_mon{nullptr}
+	, _resp_mon{nullptr}
+	, _coll_mon{nullptr}
+{}
 
 clone_server::~clone_server()
 {
-	delete _publisher;
-	delete _responder;
-	delete _collector;
-	delete _inproc;
-	delete _publisher_mon;
-	delete _responder_mon;
-	delete _collector_mon;
+	_quit = true;
 }
 
-void clone_server::bind(short first_port, std::string const & host)
+void clone_server::bind(short news_port, short answer_port, short notification_port)
 {
-	bind(first_port, first_port+1, first_port+2, host);
+	bind("*", news_port, answer_port, notification_port);
 }
 
-void clone_server::bind(short publisher_port, short responder_port, short collector_port, std::string const & host)
+void clone_server::bind(std::string const & host, short news_port, short answer_port, short notification_port)
 {
-	// just save data for later
-	_publisher_port = publisher_port;
-	_responder_port = responder_port;
-	_collector_port = collector_port;
 	_host = host;
+	_news_port = news_port;
+	_answer_port = answer_port;
+	_notification_port = notification_port;
 }
 
 void clone_server::start()
@@ -70,50 +57,43 @@ void clone_server::start()
 	assert(!_running && "server already running");
 	_running = true;
 
-	_publisher = new zmq::socket_t{*_ctx, ZMQ_PUB};
-	_responder = new zmq::socket_t{*_ctx, ZMQ_ROUTER};
-	_collector = new zmq::socket_t{*_ctx, ZMQ_PULL};
-	_inproc = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	if (!_ctx)
+		_ctx = std::shared_ptr<zmq::context_t>{new zmq::context_t{}};
 
-	// bind
 	string common_address = string{"tcp://"} + _host + string{":"};
-	_publisher->bind((common_address + to_string(_publisher_port)).c_str());
-	_responder->bind((common_address + to_string(_responder_port)).c_str());
-	_collector->bind((common_address + to_string(_collector_port)).c_str());
-	_inproc->bind(INPROC_SOCKET_ADDRESS);
+
+	_publisher = new zmq::socket_t{*_ctx, ZMQ_PUB};
+	_publisher->setsockopt<int>(ZMQ_LINGER, 0);
+	_publisher->bind((common_address + to_string(_news_port)).c_str());
+
+	_responder = new zmq::socket_t{*_ctx, ZMQ_ROUTER};
+	_responder->setsockopt<int>(ZMQ_LINGER, 0);
+	_responder->bind((common_address + to_string(_answer_port)).c_str());
+
+	_collector = new zmq::socket_t{*_ctx, ZMQ_PULL};
+	_collector->setsockopt<int>(ZMQ_LINGER, 0);
+	_collector->bind((common_address + to_string(_notification_port)).c_str());
 
 	install_monitors();
 
 	loop();
+
+	free_zmq();
+	_running = false;
 }
 
-mailbox clone_server::create_mailbox() const
+void clone_server::publish(std::string const & news) const
 {
-	return mailbox{INPROC_SOCKET_ADDRESS, _ctx};
+	_publisher_queue.push(news);
 }
 
-void clone_server::publish(mailbox & m, std::string const & feed)
+void clone_server::quit()
 {
-	m.send("publish", feed);
-}
-
-void clone_server::command(mailbox & m, std::string const & cmd)
-{
-	m.send("command", cmd);
-}
-
-void clone_server::quit(mailbox & m) const
-{
-	m.send("command", "quit");
+	_quit = true;
 }
 
 void clone_server::idle()
 {}
-
-void clone_server::publish_internal(std::string const & s)
-{
-	zmqu::send(*_publisher, s);
-}
 
 std::string clone_server::on_question(std::string const &)
 {
@@ -132,6 +112,100 @@ void clone_server::on_disconnected(socket_id, std::string const &)
 void clone_server::on_socket_event(socket_id, zmq_event_t const &, std::string const &)
 {}
 
+void clone_server::loop()
+{
+	zmqu::poller socks;
+	size_t resp_idx = socks.add(*_responder, ZMQ_POLLIN);
+	size_t coll_idx = socks.add(*_collector, ZMQ_POLLIN);
+
+	while (!_quit)
+	{
+		// publish
+		string news;
+		for (int i = 100; i && _publisher_queue.try_pop(news); --i)
+			zmqu::send(*_publisher, news);
+
+		// answer, notifications
+		socks.poll(std::chrono::milliseconds{20});
+
+		if (socks.has_input(resp_idx))
+		{
+			vector<string> msgs;
+			zmqu::recv(*_responder, msgs);
+			assert(msgs.size() == 2 && "(identify, message) expected");
+			msgs[1] = on_question(msgs[1]);
+			zmqu::send(*_responder, msgs);
+		}
+
+		if (socks.has_input(coll_idx))
+		{
+			string m = zmqu::recv(*_collector);
+			on_notify(m);
+		}
+
+		handle_monitor_events();
+
+		idle();
+	}
+}
+
+void clone_server::install_monitors()
+{
+	// establish monitor channels
+	int result = zmq_socket_monitor((void *)*_publisher, PUBLISHER_MON_ADDR, ZMQ_EVENT_ALL);
+	assert(result != -1);
+
+	result = zmq_socket_monitor((void *)*_responder, RESPONDER_MON_ADDR, ZMQ_EVENT_ALL);
+	assert(result != -1);
+
+	result = zmq_socket_monitor((void *)*_collector, COLLECTOR_MON_ADDR, ZMQ_EVENT_ALL);
+	assert(result != -1);
+
+	// connect to monitor channels
+	_pub_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	_pub_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_pub_mon->connect(PUBLISHER_MON_ADDR);
+
+	_resp_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	_resp_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_resp_mon->connect(RESPONDER_MON_ADDR);
+
+	_coll_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	_coll_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_coll_mon->connect(COLLECTOR_MON_ADDR);
+}
+
+void clone_server::handle_monitor_events()
+{
+	zmqu::poller socks;
+	size_t pub_mon_idx = socks.add(*_pub_mon, ZMQ_POLLIN);
+	size_t resp_mon_idx = socks.add(*_resp_mon, ZMQ_POLLIN);
+	size_t coll_mon_idx = socks.add(*_coll_mon, ZMQ_POLLIN);
+
+	socks.try_poll();
+
+	string addr;
+	zmq_event_t event;
+
+	if (socks.has_input(pub_mon_idx))
+	{
+		zmqu::recv(*_pub_mon, event, addr);
+		socket_event(PUBLISHER, event, addr);
+	}
+
+	if (socks.has_input(resp_mon_idx))
+	{
+		zmqu::recv(*_resp_mon, event, addr);
+		socket_event(RESPONDER, event, addr);
+	}
+
+	if (socks.has_input(coll_mon_idx))
+	{
+		zmqu::recv(*_coll_mon, event, addr);
+		socket_event(COLLECTOR, event, addr);
+	}
+}
+
 void clone_server::socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
 {
 	switch (e.event)
@@ -148,116 +222,24 @@ void clone_server::socket_event(socket_id sid, zmq_event_t const & e, std::strin
 	on_socket_event(sid, e, addr);
 }
 
-void clone_server::on_wait()
-{}
-
-void clone_server::on_receive()
-{}
-
-void clone_server::loop()
+void clone_server::free_zmq()
 {
-	_responder_idx = _socks.add(*_responder, ZMQ_POLLIN);
-	_collector_idx = _socks.add(*_collector, ZMQ_POLLIN);
-	_inproc_idx = _socks.add(*_inproc, ZMQ_POLLIN);
+	// libzmq 4 suffers from hanging if zmq_socket_monitor() used, see https://github.com/zeromq/libzmq/issues/1279
+	int result = zmq_socket_monitor((void *)*_collector, nullptr, ZMQ_EVENT_ALL);
+	assert(result != -1);
 
-	while (!_quit)
-	{
-		on_wait();
-		_socks.poll(std::chrono::milliseconds{20});
+	result = zmq_socket_monitor((void *)*_responder, nullptr, ZMQ_EVENT_ALL);
+	assert(result != -1);
 
-		if (_socks.has_input(_responder_idx))  // responder requests as (identity, message) tupple
-		{
-			on_receive();
-			vector<string> msgs;
-			zmqu::recv(*_responder, msgs);
-			assert(msgs.size() == 2 && "(identity, message) expected");
+	result = zmq_socket_monitor((void *)*_publisher, nullptr, ZMQ_EVENT_ALL);
+	assert(result != -1);
 
-			msgs[1] = on_question(msgs[1]);
-
-			zmqu::send(*_responder, msgs);
-		}
-
-		if (_socks.has_input(_collector_idx))  // collector
-		{
-			on_receive();
-			string m = zmqu::recv(*_collector);
-			on_notify(m);
-		}
-
-		if (_socks.has_input(_inproc_idx))  // inproc
-		{
-			on_receive();
-			vector<string> msgs;
-			zmqu::recv(*_inproc, msgs);
-			assert(msgs.size() == 2 && "(title, message) expected");
-			string & command = msgs[0];
-			string & content = msgs[1];
-
-			if (command == "publish")
-				publish_internal(content);
-			else if (command == "command")
-			{
-				if (content == "quit")
-					_quit = true;
-				else
-					clog << "unknown command '" << content << "'" << std::endl;
-			}
-		}
-
-		handle_monitor_events();
-
-		idle();
-	}  // while (!_quit
-
-	_running = false;
+	delete _coll_mon;
+	delete _resp_mon;
+	delete _pub_mon;
+	delete _collector;
+	delete _responder;
+	delete _publisher;
 }
 
-void clone_server::handle_monitor_events()
-{
-	string addr;
-	zmq_event_t e;
-
-	if (_publisher_mon && _socks.has_input(_publisher_mon_idx))
-	{
-		zmqu::recv(*_publisher_mon, e, addr);
-		socket_event(PUBLISHER, e, addr);
-	}
-
-	if (_responder_mon && _socks.has_input(_responder_mon_idx))
-	{
-		zmqu::recv(*_responder_mon, e, addr);
-		socket_event(RESPONDER, e, addr);
-	}
-
-	if (_collector_mon && _socks.has_input(_collector_mon_idx))
-	{
-		zmqu::recv(*_collector_mon, e, addr);
-		socket_event(COLLECTOR, e, addr);
-	}
-}
-
-void clone_server::install_monitors()
-{
-	if (_publisher_mon && _responder_mon && _collector_mon)  // monitors already installed
-		return;
-
-	int rc = zmq_socket_monitor((void *)*_publisher, "inproc://cloneserver.monitor.publisher", ZMQ_EVENT_ALL);
-	assert(rc != -1);
-	_publisher_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_publisher_mon->connect("inproc://cloneserver.monitor.publisher");
-	_publisher_mon_idx = _socks.add(*_publisher_mon, ZMQ_POLLIN);
-
-	rc = zmq_socket_monitor((void *)*_responder, "inproc://cloneserver.monitor.responder", ZMQ_EVENT_ALL);
-	assert(rc != -1);
-	_responder_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_responder_mon->connect("inproc://cloneserver.monitor.responder");
-	_responder_mon_idx = _socks.add(*_responder_mon, ZMQ_POLLIN);
-
-	rc = zmq_socket_monitor((void *)*_collector, "inproc://cloneserver.monitor.collector", ZMQ_EVENT_ALL);
-	assert(rc != -1);
-	_collector_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_collector_mon->connect("inproc://cloneserver.monitor.collector");
-	_collector_mon_idx = _socks.add(*_collector_mon, ZMQ_POLLIN);
-}
-
-}  // zmq
+}  // zmqu

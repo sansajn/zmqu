@@ -14,7 +14,7 @@ using std::to_string;
 using std::shared_ptr;
 
 clone_client::clone_client()
-	: clone_client{shared_ptr<zmq::context_t>{new zmq::context_t}}
+	: clone_client{shared_ptr<zmq::context_t>{}}
 {}
 
 clone_client::clone_client(shared_ptr<zmq::context_t> ctx)
@@ -30,9 +30,7 @@ clone_client::clone_client(shared_ptr<zmq::context_t> ctx)
 	, _sub_mon{nullptr}
 	, _req_mon{nullptr}
 	, _notif_mon{nullptr}
-{
-	assert(_ctx && "invalid context");
-}
+{}
 
 clone_client::~clone_client()
 {
@@ -52,17 +50,23 @@ void clone_client::start()
 	assert(!_running && "client already running");
 	_running = true;
 
+	if (!_ctx)
+		_ctx = shared_ptr<zmq::context_t>{new zmq::context_t{}};
+
 	// connect
 	string const common_address = string{"tcp://"} + _host + ":";
 
 	_subscriber = new zmq::socket_t{*_ctx, ZMQ_SUB};
+	_subscriber->setsockopt<int>(ZMQ_LINGER, 0);
 	_subscriber->setsockopt(ZMQ_SUBSCRIBE, "", 0);
 	_subscriber->connect((common_address + to_string(_news_port)).c_str());
 
 	_requester = new zmq::socket_t{*_ctx, ZMQ_DEALER};
+	_requester->setsockopt<int>(ZMQ_LINGER, 0);  // do not block if socket is closed
 	_requester->connect((common_address + to_string(_ask_port)).c_str());
 
 	_notifier = new zmq::socket_t{*_ctx, ZMQ_PUSH};
+	_notifier->setsockopt<int>(ZMQ_LINGER, 0);
 	_notifier->connect((common_address + to_string(_notification_port)).c_str());
 
 	install_monitors();
@@ -162,12 +166,15 @@ void clone_client::install_monitors()
 
 	// connect to monitor channels
 	_sub_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	_sub_mon->setsockopt<int>(ZMQ_LINGER, 0);
 	_sub_mon->connect(SUBSCRIBER_MON_ADDR);
 
 	_req_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	_req_mon->setsockopt<int>(ZMQ_LINGER, 0);
 	_req_mon->connect(REQUESTER_MON_ADDR);
 
 	_notif_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
+	_notif_mon->setsockopt<int>(ZMQ_LINGER, 0);
 	_notif_mon->connect(NOTIFIER_MON_ADDR);
 }
 
@@ -221,12 +228,22 @@ void clone_client::socket_event(socket_id sid, zmq_event_t const & e, std::strin
 
 void clone_client::free_zmq()
 {
-	delete _subscriber;
-	delete _requester;
-	delete _notifier;
-	delete _sub_mon;
-	delete _req_mon;
+	// libzmq 4 suffers from hanging if zmq_socket_monitor() used, see https://github.com/zeromq/libzmq/issues/1279
+	int result = zmq_socket_monitor((void *)*_subscriber, nullptr, ZMQ_EVENT_ALL);
+	assert(result != -1);
+
+	result = zmq_socket_monitor((void *)*_requester, nullptr, ZMQ_EVENT_ALL);
+	assert(result != -1);
+
+	result = zmq_socket_monitor((void *)*_notifier, nullptr, ZMQ_EVENT_ALL);
+	assert(result != -1);
+
 	delete _notif_mon;
+	delete _req_mon;
+	delete _sub_mon;
+	delete _notifier;
+	delete _requester;
+	delete _subscriber;
 }
 
 }  // zmqu

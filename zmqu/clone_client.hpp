@@ -31,9 +31,9 @@ class clone_client
 public:
 	enum socket_id
 	{
-		SUBSCRIBER,   // can receive messages
-		REQUESTER,  // can transmit and receive messages
-		NOTIFIER  // can transmit messages
+		SUBSCRIBER,   // can only receive messages (news)
+		REQUESTER,  // can transmit and receive messages (question, answer)
+		NOTIFIER  // can only transmit messages (notifications)
 	};
 
 	clone_client();
@@ -44,8 +44,10 @@ public:
 	virtual void start();
 	virtual void ask(std::string const & question) const;  //!< ask server
 	virtual void notify(std::string const & news) const;  //!< notify server
-	virtual void idle();
 	virtual void quit();  //!< transparent async quit
+
+protected:
+	virtual void idle();
 
 	// server events
 	virtual void on_news(std::string const & news);  //!< on server news (publisher socket)

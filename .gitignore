@@ -18,3 +18,5 @@ zmqu.config
 /test/client_sock_events
 /test/server_sock_events
 /test/test_clone_client_q
+/test/recv_vector
+/test/monitor

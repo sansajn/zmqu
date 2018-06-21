@@ -1,10 +1,12 @@
 // variable argument receive sample
-#include <iostream>
+#include <vector>
 #include <thread>
+#include <iostream>
 #include <catch.hpp>
 #include <zmqu/recv.hpp>
 #include <zmqu/send.hpp>
 
+using std::vector;
 using std::string;
 using std::cout;
 
@@ -42,7 +44,6 @@ void simple_varargs_client_with_varargs_send(zmq::context_t & ctx)
 
 	// done
 }
-
 
 TEST_CASE("receive more variables with multipart send", "[recv,send]")
 {

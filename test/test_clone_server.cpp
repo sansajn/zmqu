@@ -1,26 +1,48 @@
 // tests for client and server interaction
 #include <string>
 #include <thread>
+#include <mutex>
+#include <atomic>
 #include <iostream>
 #include <catch.hpp>
 #include "zmqu/clone_server.hpp"
 #include "zmqu/clone_client.hpp"
 
+using std::mutex;
+using std::atomic_bool;
 using std::string;
 using std::cout;
 
-struct dummy_server : public zmqu::clone_server
+class dummy_server : public zmqu::clone_server
 {
-	string question;
-	bool accepted = false;
+public:
+	using lock_guard = std::lock_guard<std::mutex>;
+
+	atomic_bool accepted;
+
+	dummy_server() : accepted{false}
+	{}
+
+	string notification_value()
+	{
+		lock_guard lock{_mtx};
+		return _notification;
+	}
 
 	string on_question(string const & q) override
 	{
-		question = q;
+		lock_guard lock{_mtx};
+		_question = q;
 		if (q == "who else?")
 			return "Teresa Lisbon";
 		else
 			return string{"no idea"};
+	}
+
+	void on_notify(string const & s) override
+	{
+		lock_guard lock{_mtx};
+		_notification = s;
 	}
 
 	void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr) override
@@ -28,54 +50,85 @@ struct dummy_server : public zmqu::clone_server
 		if (sid == PUBLISHER && e.event == ZMQ_EVENT_ACCEPTED)
 			accepted = true;
 	}
+
+private:
+	string _question;
+	string _notification;
+	mutex _mtx;
 };
 
-struct dummy_client : public zmqu::clone_client
-{
-	string news, answer;
-	bool connected = false;
-
-	void on_news(std::string const & s) override {news = s;}
-	void on_answer(string const & s) override {answer = s;}
-
-	void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr) override
-	{
-		if (sid == SUBSCRIBER && e.event == ZMQ_EVENT_CONNECTED)
-			connected = true;
-	}
-};
 
 TEST_CASE("clone server can publish news", "[clone_server]")
 {
 	dummy_server serv;
-	serv.bind(5556);
+	serv.bind(5556, 5557, 5558);
 	std::thread serv_thread{&dummy_server::start, &serv};
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
-	dummy_client client;
-	client.connect("localhost", 5556, 5557, 5558);
-	std::thread client_thread{&dummy_client::start, &client};
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});
+	zmq::context_t ctx;
+	zmq::socket_t sub{ctx, ZMQ_SUB};
+	sub.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+	sub.connect("tcp://localhost:5556");
 
 	// publish news
-	zmqu::mailbox serv_mail = serv.create_mailbox();
-	serv.publish(serv_mail, "Patric Jane");
+	serv.publish("Patric Jane");
 
-	// ask server
-	client.ask("who else?");
+	zmq::message_t msg{30};
+	sub.recv(&msg);
+	string news{msg.data<char>(), msg.size()};
 
-	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wait for zmq
+	REQUIRE(news == "Patric Jane");
 
-	REQUIRE(serv.accepted);
-	REQUIRE(client.connected);
-	REQUIRE(client.news == "Patric Jane");
-	REQUIRE(serv.question == "who else?");
-	REQUIRE(client.answer == "Teresa Lisbon");
-
-	// quit
-	client.quit();
-	serv.quit(serv_mail);
+	serv.quit();
 
 	serv_thread.join();
-	client_thread.join();
+}
+
+TEST_CASE("clone server can answer questions", "[clone_server]")
+{
+	dummy_server serv;
+	serv.bind(5556, 5557, 5558);
+	std::thread serv_thread{&dummy_server::start, &serv};
+
+	// client
+	zmq::context_t ctx;
+	zmq::socket_t req{ctx, ZMQ_DEALER};
+	req.setsockopt<int>(ZMQ_LINGER, 0);
+	req.connect("tcp://localhost:5557");
+	assert(req.connected());
+
+	string question = "who else?";
+	req.send(question.c_str(), question.size());
+
+	zmq::message_t msg{30};
+	req.recv(&msg);
+	string answer{msg.data<char>(), msg.size()};
+
+	REQUIRE(answer == "Teresa Lisbon");
+
+	serv.quit();
+	serv_thread.join();
+}
+
+TEST_CASE("clone server can be also notified", "[clone_server]")
+{
+	dummy_server serv;
+	serv.bind(5556, 5557, 5558);
+	std::thread serv_thread{&dummy_server::start, &serv};
+
+	// client
+	zmq::context_t ctx;
+	zmq::socket_t notif{ctx, ZMQ_PUSH};
+	notif.connect("tcp://localhost:5558");
+	assert(notif.connected());
+
+	string notification{"Patric Jane is there!"};
+	notif.send(notification.c_str(), notification.size());
+
+	std::this_thread::sleep_for(std::chrono::milliseconds{200});  // wait ZMQ to deliver a message
+
+	REQUIRE(serv.notification_value() == "Patric Jane is there!");
+
+	serv.quit();
+	serv_thread.join();
 }
