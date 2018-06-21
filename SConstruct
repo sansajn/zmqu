@@ -25,24 +25,24 @@ env.ParseConfig('pkg-config --cflags --libs libzmq')
 
 zmqu_objs = env.Object(Glob('zmqu/*.cpp'))
 
+# static libzmqu library
+zmqu_lib = env.StaticLibrary('zmqu', [zmqu_objs])
+
 # tests
 test_env = env.Clone()
 
 test_env.Program('utest', [
 	'test/main.cpp',
 	Glob('test/test_*.cpp'),
-	zmqu_objs
+	zmqu_lib
 ])
 
 # samples
-env.Program(['test/client_sock_events.cpp', zmqu_objs])
-env.Program(['test/server_sock_events.cpp', zmqu_objs])
-env.Program(['test/monitor.cpp', zmqu_objs])
-env.Program(['test/recv_vector.cpp', zmqu_objs])
+env.Program(['test/client_sock_events.cpp', zmqu_lib])
+env.Program(['test/server_sock_events.cpp', zmqu_lib])
+env.Program(['test/monitor.cpp', zmqu_lib])
+env.Program(['test/recv_vector.cpp', zmqu_lib])
 
 # legacy
 #env.Program(['legacy/rrserv.cpp', zmqu_objs])
 #env.Program(['legacy/rrclient.cpp', zmqu_objs])
-#env.Program(['legacy/ccclient.cpp', zmqu_objs])
-#env.Program(['legacy/ccserv.cpp', zmqu_objs])
-#env.Program(['legacy/varargs_recv_client.cpp', zmqu_objs])
