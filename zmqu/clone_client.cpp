@@ -148,7 +148,8 @@ void clone_client::loop()
 
 		handle_monitor_events();
 
-		idle();
+		if (!_quit)
+			idle();
 	}
 }
 

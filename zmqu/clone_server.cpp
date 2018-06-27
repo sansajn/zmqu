@@ -1,4 +1,3 @@
-#include <iostream>
 #include "send.hpp"
 #include "recv.hpp"
 #include "poller.hpp"
@@ -13,7 +12,6 @@ constexpr char const * COLLECTOR_MON_ADDR = "inproc://cloneserver.monitor.collec
 using std::string;
 using std::to_string;
 using std::vector;
-using std::clog;
 
 clone_server::clone_server()
 	: clone_server(std::shared_ptr<zmq::context_t>{})
@@ -145,7 +143,8 @@ void clone_server::loop()
 
 		handle_monitor_events();
 
-		idle();
+		if (!_quit)
+			idle();
 	}
 }
 
