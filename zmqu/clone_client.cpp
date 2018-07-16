@@ -57,16 +57,17 @@ void clone_client::start()
 	string const common_address = string{"tcp://"} + _host + ":";
 
 	_subscriber = new zmq::socket_t{*_ctx, ZMQ_SUB};
-	_subscriber->setsockopt<int>(ZMQ_LINGER, 0);
+	int linger_value = 0;
+	_subscriber->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_subscriber->setsockopt(ZMQ_SUBSCRIBE, "", 0);
 	_subscriber->connect((common_address + to_string(_news_port)).c_str());
 
 	_requester = new zmq::socket_t{*_ctx, ZMQ_DEALER};
-	_requester->setsockopt<int>(ZMQ_LINGER, 0);  // do not block if socket is closed
+	_requester->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));  // do not block if socket is closed
 	_requester->connect((common_address + to_string(_ask_port)).c_str());
 
 	_notifier = new zmq::socket_t{*_ctx, ZMQ_PUSH};
-	_notifier->setsockopt<int>(ZMQ_LINGER, 0);
+	_notifier->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_notifier->connect((common_address + to_string(_notification_port)).c_str());
 
 	install_monitors();
@@ -167,15 +168,16 @@ void clone_client::install_monitors()
 
 	// connect to monitor channels
 	_sub_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_sub_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	int linger_value = 0;
+	_sub_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_sub_mon->connect(SUBSCRIBER_MON_ADDR);
 
 	_req_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_req_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_req_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_req_mon->connect(REQUESTER_MON_ADDR);
 
 	_notif_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_notif_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_notif_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_notif_mon->connect(NOTIFIER_MON_ADDR);
 }
 

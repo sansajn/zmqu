@@ -61,15 +61,16 @@ void clone_server::start()
 	string common_address = string{"tcp://"} + _host + string{":"};
 
 	_publisher = new zmq::socket_t{*_ctx, ZMQ_PUB};
-	_publisher->setsockopt<int>(ZMQ_LINGER, 0);
+	int linger_value = 0;
+	_publisher->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_publisher->bind((common_address + to_string(_news_port)).c_str());
 
 	_responder = new zmq::socket_t{*_ctx, ZMQ_ROUTER};
-	_responder->setsockopt<int>(ZMQ_LINGER, 0);
+	_responder->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_responder->bind((common_address + to_string(_answer_port)).c_str());
 
 	_collector = new zmq::socket_t{*_ctx, ZMQ_PULL};
-	_collector->setsockopt<int>(ZMQ_LINGER, 0);
+	_collector->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_collector->bind((common_address + to_string(_notification_port)).c_str());
 
 	install_monitors();
@@ -162,15 +163,16 @@ void clone_server::install_monitors()
 
 	// connect to monitor channels
 	_pub_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_pub_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	int linger_value = 0;
+	_pub_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_pub_mon->connect(PUBLISHER_MON_ADDR);
 
 	_resp_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_resp_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_resp_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_resp_mon->connect(RESPONDER_MON_ADDR);
 
 	_coll_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
-	_coll_mon->setsockopt<int>(ZMQ_LINGER, 0);
+	_coll_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_coll_mon->connect(COLLECTOR_MON_ADDR);
 }
 
