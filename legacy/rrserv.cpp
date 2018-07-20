@@ -11,7 +11,7 @@ int main(int argc, char * argv[])
 	{
 		std::string s = zmqu::recv(responder);
 		std::cout << s << std::endl;
-		zmqu::send(responder, "world");
+		zmqu::send_sync(responder, "world");
 	}
 
 	return 0;

@@ -59,7 +59,7 @@ TEST_CASE("clone client news (subscriber) channel", "[clone_client]")
 
 	// send a news to client
 	string expected{"hello jane!"};
-	zmqu::send(socket, expected);
+	zmqu::send_sync(socket, expected);
 
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
 
@@ -95,7 +95,7 @@ TEST_CASE("clone client ask channel test", "[clone_client]")
 
 	// answer
 	responder.send(identity, ZMQ_SNDMORE);
-	zmqu::send(responder, answer);
+	zmqu::send_sync(responder, answer);
 
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
 

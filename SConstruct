@@ -43,6 +43,17 @@ env.Program(['test/server_sock_events.cpp', zmqu_lib])
 env.Program(['test/monitor.cpp', zmqu_lib])
 env.Program(['test/recv_vector.cpp', zmqu_lib])
 
+
+boosted_env = env.Clone()
+
+boosted_env.Append(
+	LIBS=['boost_log', 'boost_system', 'boost_thread', 'pthread'],
+	CPPDEFINES=['BOOST_LOG_DYN_LINK']
+)
+
+boosted_env.Program(['test/sync_send_hang.cpp', zmqu_lib])
+boosted_env.Program(['test/async_send.cpp', zmqu_lib])
+
 # legacy
 #env.Program(['legacy/rrserv.cpp', zmqu_objs])
 #env.Program(['legacy/rrclient.cpp', zmqu_objs])

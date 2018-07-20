@@ -20,9 +20,9 @@ void simple_varargs_client(zmq::context_t & ctx)
 	string name{"Jane"};
 	int age = 32;
 	double salary = 2400.0;
-	zmqu::send_multipart(requester, name);
-	zmqu::send_multipart(requester, age);
-	zmqu::send(requester, salary);
+	zmqu::send_multipart_sync(requester, name);
+	zmqu::send_multipart_sync(requester, age);
+	zmqu::send_sync(requester, salary);
 
 	string s = zmqu::recv(requester);
 
@@ -38,7 +38,7 @@ void simple_varargs_client_with_varargs_send(zmq::context_t & ctx)
 	string name{"Jane"};
 	int age = 32;
 	double salary = 2400.0;
-	zmqu::send(requester, name, age, salary);
+	zmqu::send_sync(requester, name, age, salary);
 
 	string s = zmqu::recv(requester);
 
