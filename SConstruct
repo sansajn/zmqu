@@ -52,7 +52,6 @@ boosted_env.Append(
 )
 
 boosted_env.Program(['test/sync_send_hang.cpp', zmqu_lib])
-boosted_env.Program(['test/async_send.cpp', zmqu_lib])
 
 # legacy
 #env.Program(['legacy/rrserv.cpp', zmqu_objs])
