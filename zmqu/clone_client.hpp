@@ -46,6 +46,8 @@ public:
 	virtual void notify(std::string const & news) const;  //!< notify server
 	virtual void quit();  //!< transparent async quit
 
+	void clear_incoming_message_queue(socket_id sid);
+
 protected:
 	virtual void idle();
 

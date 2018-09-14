@@ -96,6 +96,16 @@ void clone_client::quit()
 	_quit = true;
 }
 
+void clone_client::clear_incoming_message_queue(socket_id sid)
+{
+	if (sid != SUBSCRIBER)
+		return;  // nothing to do
+
+	zmq::message_t msg;
+	while (_subscriber->recv(&msg, ZMQ_DONTWAIT))
+		;
+}
+
 void clone_client::on_news(std::string const & news)
 {}
 
