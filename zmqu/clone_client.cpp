@@ -47,6 +47,7 @@ void clone_client::connect(string const & host, short news_port, short ask_port,
 
 void clone_client::start()
 {
+	assert(!_host.empty() && "invalid host");
 	assert(!_running && "client already running");
 	_running = true;
 
