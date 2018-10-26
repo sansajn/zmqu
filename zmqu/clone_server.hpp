@@ -12,7 +12,7 @@ namespace zmqu {
 	{
 		clone_server serv;
 		serv.bind("*", 5555, 5556, 5557);
-		std::thread t{&clone_server::start, serv};
+		std::thread t{&clone_server::start, &serv};
 		serv.publish("Patric Jane");
 		// ...
 		t.join();

@@ -42,6 +42,8 @@ env.Program(['test/client_sock_events.cpp', zmqu_lib])
 env.Program(['test/server_sock_events.cpp', zmqu_lib])
 env.Program(['test/monitor.cpp', zmqu_lib])
 env.Program(['test/recv_vector.cpp', zmqu_lib])
+env.Program(['test/subscriber_events.cpp', zmqu_lib])
+env.Program(['test/clone_monitor.cpp', zmqu_lib])
 
 
 boosted_env = env.Clone()

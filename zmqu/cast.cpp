@@ -4,6 +4,7 @@
 namespace zmqu {
 
 using std::string;
+using std::to_string;
 
 
 string event_to_string(int event)
@@ -23,7 +24,7 @@ string event_to_string(int event)
 #if ZMQ_VERSION >= ZMQ_MAKE_VERSION(4, 1, 0)
 		case ZMQ_EVENT_MONITOR_STOPPED: return "monitor stopped";
 #endif
-		default: return "unknown";
+		default: return to_string(event);
 	}
 }
 

@@ -1,3 +1,4 @@
+#include <thread>
 #include "poller.hpp"
 #include "clone_client.hpp"
 #include "recv.hpp"
@@ -97,14 +98,17 @@ void clone_client::quit()
 	_quit = true;
 }
 
-void clone_client::clear_incoming_message_queue(socket_id sid)
+int clone_client::clear_incoming_message_queue(socket_id sid)
 {
 	if (sid != SUBSCRIBER)
-		return;  // nothing to do
+		return 0;  // nothing to do
 
+	int counter = 0;
 	zmq::message_t msg;
 	while (_subscriber->recv(&msg, ZMQ_DONTWAIT))
-		;
+		++counter;
+
+	return counter;
 }
 
 void clone_client::on_news(std::string const & news)
@@ -125,12 +129,12 @@ void clone_client::on_socket_event(socket_id sid, zmq_event_t const & e, std::st
 
 void clone_client::loop()
 {
-	zmqu::poller socks;
-	size_t sub_idx = socks.add(*_subscriber, ZMQ_POLLIN);
-	size_t req_idx = socks.add(*_requester, ZMQ_POLLIN);
-
 	while (!_quit)
 	{
+		handle_monitor_events();
+
+		// TODO: send after connect
+
 		// ask
 		string question;
 		for (int i = 100; i && _requester_queue.try_pop(question); --i)
@@ -142,23 +146,12 @@ void clone_client::loop()
 			zmqu::send(*_notifier, news);
 
 		// news, answers
-		socks.poll(std::chrono::milliseconds{20});
+		string msg;
+		if (zmqu::try_recv(*_subscriber, msg))
+			on_news(msg);
 
-		if (socks.has_input(sub_idx))
-		{
-			string s;
-			zmqu::recv(*_subscriber, s);
-			on_news(s);
-		}
-
-		if (socks.has_input(req_idx))
-		{
-			string s;
-			zmqu::recv(*_requester, s);
-			on_answer(s);
-		}
-
-		handle_monitor_events();
+		if (zmqu::try_recv(*_requester, msg))
+			on_answer(msg);
 
 		if (!_quit)
 			idle();
@@ -194,32 +187,24 @@ void clone_client::install_monitors()
 
 void clone_client::handle_monitor_events()
 {
-	zmqu::poller socks;
-	size_t sub_mon_idx = socks.add(*_sub_mon, ZMQ_POLLIN);
-	size_t req_mon_idx = socks.add(*_req_mon, ZMQ_POLLIN);
-	size_t notif_mon_idx = socks.add(*_notif_mon, ZMQ_POLLIN);
-
-	socks.try_poll();
-
-	// monitor events
 	string addr;
 	zmq_event_t event;
 
-	if (socks.has_input(sub_mon_idx))
+	if (zmqu::try_recv(*_sub_mon, event))
 	{
-		zmqu::recv(*_sub_mon, event, addr);
+		zmqu::recv(*_sub_mon, addr);
 		socket_event(SUBSCRIBER, event, addr);
 	}
 
-	if (socks.has_input(req_mon_idx))
+	if (zmqu::try_recv(*_req_mon, event))
 	{
-		zmqu::recv(*_req_mon, event, addr);
+		zmqu::recv(*_req_mon, addr);
 		socket_event(REQUESTER, event, addr);
 	}
 
-	if (socks.has_input(notif_mon_idx))
+	if (zmqu::try_recv(*_notif_mon, event))
 	{
-		zmqu::recv(*_notif_mon, event, addr);
+		zmqu::recv(*_notif_mon, addr);
 		socket_event(NOTIFIER, event, addr);
 	}
 }

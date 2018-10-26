@@ -10,7 +10,7 @@ namespace zmqu {
 
 /*! Multithread safe (queue based) ZeroMQ clone pattern client implementation.
 \code
-	struct cout_client_impl : publis zmqu::clone_client
+	struct cout_client: publis zmqu::clone_client
 	{
 		void on_news(string const & news) override
 		{
@@ -20,8 +20,8 @@ namespace zmqu {
 
 	void foo()
 	{
-		cout_client_impl c;
-		c.connect("localhost", 8876, 8877, 8878);
+		cout_client c;
+		c.connect("localhost", 5555, 5556, 5557);
 		std::thread t{&clone_client_q::start, &c};
 		t.join();
 	}
@@ -46,7 +46,7 @@ public:
 	virtual void notify(std::string const & news) const;  //!< notify server
 	virtual void quit();  //!< transparent async quit
 
-	void clear_incoming_message_queue(socket_id sid);
+	int clear_incoming_message_queue(socket_id sid);  //!< returns number of removed messages
 
 protected:
 	virtual void idle();

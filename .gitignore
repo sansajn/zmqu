@@ -23,3 +23,5 @@ zmqu.config
 /test/monitor
 /test/async_send
 /test/sync_send_hang
+/test/clone_monitor
+/test/subscriber_events

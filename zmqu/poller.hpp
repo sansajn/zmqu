@@ -4,8 +4,8 @@
 #include <zmq.hpp>
 
 namespace zmqu {
-
-// TODO: include example, how to use it
+/* TODO: include example, how to use it
+TODO: remove, we can use recv in non-blocking mode */
 class poller
 {
 public:
