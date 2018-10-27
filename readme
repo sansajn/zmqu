@@ -1,16 +1,16 @@
-ZeroMQ library utilities for everyday C++.
+ZeroMQ library helpers for everyday C++.
 
 dependences: 
 
-	libzmq3-dev, 
-	boost (1.58),
-	libgtest-dev
+	libzmq3-dev (4.1.4-7), 
+	libboost-all-dev (1.58),
+	catch (1.2.0.-1)
 
 
 {build}
 
 Just run
 
-	$ scons
+	$ scons -j8
 
-command from library directory.
+command from zmqu directory.

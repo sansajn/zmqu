@@ -1,3 +1,8 @@
+# dependencies:
+#   libzmq3-dev (4.1.4-7, ubuntu 16.04)
+#   libboost-all-dev (1.58.0, ubuntu 16.04)
+#   catch (1.2.0-1, ubuntu 16.04)
+
 # --release-build option
 AddOption(
 	'--release-build', 
