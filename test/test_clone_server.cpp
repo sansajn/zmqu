@@ -70,6 +70,8 @@ TEST_CASE("clone server can publish news", "[clone_server]")
 	sub.setsockopt(ZMQ_SUBSCRIBE, "", 0);
 	sub.connect("tcp://localhost:5556");
 
+	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for connect, otherwise next one recv will block
+
 	// publish news
 	serv.publish("Patric Jane");
 

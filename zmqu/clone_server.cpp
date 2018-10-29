@@ -113,36 +113,26 @@ void clone_server::on_socket_event(socket_id, zmq_event_t const &, std::string c
 
 void clone_server::loop()
 {
-	zmqu::poller socks;
-	size_t resp_idx = socks.add(*_responder, ZMQ_POLLIN);
-	size_t coll_idx = socks.add(*_collector, ZMQ_POLLIN);
-
 	while (!_quit)
 	{
+		handle_monitor_events();
+
 		// publish
 		string news;
 		for (int i = 100; i && _publisher_queue.try_pop(news); --i)
 			zmqu::send(*_publisher, news);
 
-		// answer, notifications
-		socks.poll(std::chrono::milliseconds{20});
-
-		if (socks.has_input(resp_idx))
+		vector<string> id_with_msg{2};
+		if (zmqu::try_recv(*_responder, id_with_msg[0]))
 		{
-			vector<string> msgs;
-			zmqu::recv(*_responder, msgs);
-			assert(msgs.size() == 2 && "(identify, message) expected");
-			msgs[1] = on_question(msgs[1]);
-			zmqu::send(*_responder, msgs);
+			zmqu::recv(*_responder, id_with_msg[1]);
+			id_with_msg[1] = on_question(id_with_msg[1]);
+			zmqu::send(*_responder, id_with_msg);
 		}
 
-		if (socks.has_input(coll_idx))
-		{
-			string m = zmqu::recv(*_collector);
-			on_notify(m);
-		}
-
-		handle_monitor_events();
+		string feed;
+		if (zmqu::try_recv(*_collector, feed))
+			on_notify(feed);
 
 		if (!_quit)
 			idle();
@@ -178,31 +168,24 @@ void clone_server::install_monitors()
 
 void clone_server::handle_monitor_events()
 {
-	zmqu::poller socks;
-	size_t pub_mon_idx = socks.add(*_pub_mon, ZMQ_POLLIN);
-	size_t resp_mon_idx = socks.add(*_resp_mon, ZMQ_POLLIN);
-	size_t coll_mon_idx = socks.add(*_coll_mon, ZMQ_POLLIN);
-
-	socks.try_poll();
-
 	string addr;
 	zmq_event_t event;
 
-	if (socks.has_input(pub_mon_idx))
+	if (zmqu::try_recv(*_pub_mon, event))
 	{
-		zmqu::recv(*_pub_mon, event, addr);
+		zmqu::recv(*_pub_mon, addr);
 		socket_event(PUBLISHER, event, addr);
 	}
 
-	if (socks.has_input(resp_mon_idx))
+	if (zmqu::try_recv(*_resp_mon, event))
 	{
-		zmqu::recv(*_resp_mon, event, addr);
+		zmqu::recv(*_resp_mon, addr);
 		socket_event(RESPONDER, event, addr);
 	}
 
-	if (socks.has_input(coll_mon_idx))
+	if (zmqu::try_recv(*_coll_mon, event))
 	{
-		zmqu::recv(*_coll_mon, event, addr);
+		zmqu::recv(*_coll_mon, addr);
 		socket_event(COLLECTOR, event, addr);
 	}
 }
