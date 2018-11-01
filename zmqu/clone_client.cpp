@@ -133,8 +133,6 @@ void clone_client::loop()
 	{
 		handle_monitor_events();
 
-		// TODO: send after connect
-
 		// ask
 		string question;
 		for (int i = 100; i && _requester_queue.try_pop(question); --i)
