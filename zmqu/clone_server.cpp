@@ -1,3 +1,4 @@
+#include <iostream>
 #include "send.hpp"
 #include "recv.hpp"
 #include "poller.hpp"
@@ -61,9 +62,22 @@ void clone_server::start()
 	string common_address = string{"tcp://"} + _host + string{":"};
 
 	_publisher = new zmq::socket_t{*_ctx, ZMQ_PUB};
-	int linger_value = 0;
-	_publisher->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
+	int linger_value = 0, sndhwm = 0;
+	_publisher->setsockopt(ZMQ_LINGER, &linger_value, sizeof(int));
+	_publisher->setsockopt(ZMQ_SNDHWM, &sndhwm, sizeof(int));
 	_publisher->bind((common_address + to_string(_news_port)).c_str());
+
+	{  // publisher info
+		int rcvhwm = -1;
+		size_t length = sizeof(int);
+		_publisher->getsockopt(ZMQ_RCVHWM, &rcvhwm, &length);
+
+		int sndhwm = -1;
+		length = sizeof(int);
+		_publisher->getsockopt(ZMQ_SNDHWM, &sndhwm, &length);
+
+		std::cerr << "publisher(ZMQ_RCVHWM=" << rcvhwm << ", ZMQ_SNDHWM=" << sndhwm << ") created" << std::endl;
+	}
 
 	_responder = new zmq::socket_t{*_ctx, ZMQ_ROUTER};
 	_responder->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
@@ -115,6 +129,10 @@ void clone_server::loop()
 {
 	while (!_quit)
 	{
+		int err = zmq_errno();
+		if (err > 0 && err != EAGAIN)
+			std::cerr << "zmq: error (" << err << ") detected what: " << zmq_strerror(err) << std::endl;
+
 		handle_monitor_events();
 
 		// publish
