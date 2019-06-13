@@ -145,10 +145,10 @@ void clone_client::loop()
 
 		// news, answers
 		string msg;
-		if (zmqu::try_recv(*_subscriber, msg))
+		while (zmqu::try_recv(*_subscriber, msg))
 			on_news(msg);
 
-		if (zmqu::try_recv(*_requester, msg))
+		while (zmqu::try_recv(*_requester, msg))
 			on_answer(msg);
 
 		if (!_quit)

@@ -141,7 +141,7 @@ void clone_server::loop()
 			zmqu::send(*_publisher, news);
 
 		vector<string> id_with_msg{2};
-		if (zmqu::try_recv(*_responder, id_with_msg[0]))
+		while (zmqu::try_recv(*_responder, id_with_msg[0]))
 		{
 			zmqu::recv(*_responder, id_with_msg[1]);
 			id_with_msg[1] = on_question(id_with_msg[1]);
@@ -149,7 +149,7 @@ void clone_server::loop()
 		}
 
 		string feed;
-		if (zmqu::try_recv(*_collector, feed))
+		while (zmqu::try_recv(*_collector, feed))
 			on_notify(feed);
 
 		if (!_quit)
