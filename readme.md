@@ -1,6 +1,6 @@
 # zmqu
 
-ZMQ C++ clone pattern client/server implementation. Server part is implemented by `zmqu::clone_server` and client part by `zmqu::clone_client` class.
+ZeroMQ C++ clone pattern client/server implementation. Server part is implemented by `zmqu::clone_server` and client part by `zmqu::clone_client` class.
 
 The simplest possible server implementation can look like this
 
@@ -9,7 +9,7 @@ class simple_server : public zmqu::clone_server
 {
 public:
 	string on_question(string const & q) override {
-		cout << "question: " << q << std::endl;
+		cout << "question: " << q << endl;
 		if (q == "who is there?")
 			return "ZMQ clone pattern server implementation!";
 		else
@@ -17,51 +17,54 @@ public:
 	}
 
 	void on_notify(string const & s) override {
-		cout << "notify: " << s << std::endl;
+		cout << "notify: " << s << endl;
 	}
 };
 
 void main() 
 {
 	// create, bind and start server
-	simple_server serv;
+	async<simple_server> serv;
 	serv.bind(5556, 5557, 5558);
-	std::thread serv_thread{&simple_server::start, &serv};
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
-
+	serv.run();
+	wait_event([&serv]{return serv.ready();}, seconds{1});  // wait for server thread
+	
 	serv.publish("welcome all ...");
 
-	serv_thread.join();
+	serv.join();
 }
 ```
 
-and simplest client implementation can looks like this
+and the simplest client implementation can looks like this
 
 ```c++
 struct simple_client : public zmqu::clone_client
 {
 	void on_news(std::string const & s) override {
-		cout << "news: " << s << std::endl;
+		cout << "news: " << s << endl;
 	}
 
 	void on_answer(std::string const & answer) override {
-		cout << "answer: " << answer << std::endl;
+		cout << "answer: " << answer << endl;
 	}
 };
 
 void main()
 {
-	simple_client cli;
+	async<simple_client> cli;
 	cli.connect("localhost", 5556, 5557, 5558);
-	std::thread cli_thread{&simple_client::start, &client};
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
-
+	cli.run();
+	wait_event([&cli]{return cli.ready();}, seconds{1});
+	
 	cli.notify("client ready");
 	cli.ask("who is there?");
 
-	cli_thread.join();
+	cli.join();
 }
 ```
+
+See `test/` directory for more samples.
+
 
 ## how to build
 
@@ -75,5 +78,5 @@ and just run
 
 	$ scons -j8
 
-command from zmqu directory.
+command from `zmqu/` directory.
 
