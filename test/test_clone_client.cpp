@@ -1,6 +1,7 @@
 #include <string>
 #include <thread>
 #include <memory>
+#include <chrono>
 #include <catch.hpp>
 #include "zmqu/send.hpp"
 #include "zmqu/recv.hpp"
@@ -9,7 +10,9 @@
 
 using std::string;
 using std::shared_ptr;
+using std::chrono::seconds;
 using zmqu::async;
+using zmqu::wait_event;
 
 struct dummy_client_subscribe_test : public zmqu::clone_client
 {
@@ -44,6 +47,8 @@ struct dummy_client_monitoring_test : public zmqu::clone_client
 			case NOTIFIER:
 				notifier_state = e.event;
 				break;
+
+			default: break;
 		}
 	}
 };
@@ -58,30 +63,29 @@ TEST_CASE("clone client news (subscriber) channel",
 	async<dummy_client_subscribe_test> client;
 	client.connect("localhost", 5556, 5557, 5558);
 	client.run();
-
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
+	REQUIRE(wait_event([&client]{return client.ready();}, seconds{1}));
 
 	// send a news to client
 	string expected{"hello jane!"};
 	zmqu::send_sync(socket, expected);
 
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
+	REQUIRE(wait_event(
+		[&client]{return !client.last_news.empty();}, seconds{1}));
 
 	REQUIRE(client.last_news == expected);
-
-	client.quit();  // quit client
 }
 
-TEST_CASE("clone client ask channel test", "[clone_client]")
+TEST_CASE("clone client ask channel test",
+	"[clone_client]")
 {
 	zmq::context_t ctx;
 	zmq::socket_t responder{ctx, ZMQ_ROUTER};
 	responder.bind("tcp://*:5557");
 
-	dummy_client_ask_test client;
+	async<dummy_client_ask_test> client;
 	client.connect("localhost", 5556, 5557, 5558);
-	std::thread client_thread{&dummy_client_ask_test::start, &client};  // run client
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
+	client.run();
+	REQUIRE(wait_event([&client]{return client.ready();}, seconds{1}));
 
 	string question{"who is there?"};
 	string answer{"hello, teresa is there!"};
@@ -99,24 +103,23 @@ TEST_CASE("clone client ask channel test", "[clone_client]")
 	responder.send(identity, ZMQ_SNDMORE);
 	zmqu::send_sync(responder, answer);
 
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for client
+	REQUIRE(wait_event(
+		[&client]{return !client.last_answer.empty();}, seconds{1}));
 
 	REQUIRE(client.last_answer == answer);
-
-	client.quit();
-	client_thread.join();
 }
 
-TEST_CASE("clone client notify channel test", "[clone_client]")
+TEST_CASE("clone client notify channel test",
+	"[clone_client]")
 {
 	zmq::context_t ctx;
 	zmq::socket_t collector{ctx, ZMQ_PULL};  // server
 	collector.bind("tcp://*:5558");
 
-	dummy_client_ask_test client;
+	async<dummy_client_ask_test> client;
 	client.connect("localhost", 5556, 5557, 5558);
-	std::thread client_thread{&dummy_client_ask_test::start, &client};  // run client
-	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
+	client.run();
+	REQUIRE(wait_event([&client]{return client.ready();}, seconds{1}));
 
 	string notify_msg = "Teresa ready";
 	client.notify(notify_msg);
@@ -124,12 +127,10 @@ TEST_CASE("clone client notify channel test", "[clone_client]")
 	string msg = zmqu::recv(collector);
 
 	REQUIRE(msg == notify_msg);
-
-	client.quit();
-	client_thread.join();
 }
 
-TEST_CASE("clone client socket events monitoring test", "[clone_client]")
+TEST_CASE("clone client socket events monitoring test",
+	"[clone_client]")
 {
 	// dummy server
 	shared_ptr<zmq::context_t> ctx{new zmq::context_t};
@@ -143,20 +144,19 @@ TEST_CASE("clone client socket events monitoring test", "[clone_client]")
 	collector_socket.bind("tcp://*:5558");
 
 	// client
-	dummy_client_monitoring_test client;
+	async<dummy_client_monitoring_test> client;
 	client.connect("localhost", 5556, 5557, 5558);
 
 	REQUIRE(client.subscriber_state == -1);
 	REQUIRE(client.requester_state == -1);
 	REQUIRE(client.notifier_state == -1);
 
-	std::thread client_thread{&dummy_client_ask_test::start, &client};  // run client
-	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wait for thread
+	client.run();
+	REQUIRE(wait_event([&client]{return client.ready();}, seconds{1}));
 
 	REQUIRE(client.subscriber_state == ZMQ_EVENT_CONNECTED);
 	REQUIRE(client.requester_state == ZMQ_EVENT_CONNECTED);
 	REQUIRE(client.notifier_state == ZMQ_EVENT_CONNECTED);
 
 	client.quit();
-	client_thread.join();
 }

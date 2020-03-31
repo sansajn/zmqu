@@ -1,4 +1,6 @@
+#include <functional>
 #include <thread>
+#include <iostream>
 #include "poller.hpp"
 #include "clone_client.hpp"
 #include "recv.hpp"
@@ -19,11 +21,11 @@ clone_client::clone_client()
 {}
 
 clone_client::clone_client(shared_ptr<zmq::context_t> ctx)
-	: _ctx{ctx}
+	:  _ctx{ctx}
 	, _subscriber{nullptr}
 	, _requester{nullptr}
 	, _notifier{nullptr}
-	, _running{false}
+	, _ready{false}
 	, _quit{false}
 	, _news_port{0}
 	, _ask_port{0}
@@ -40,6 +42,7 @@ clone_client::~clone_client()
 
 void clone_client::connect(string const & host, short news_port, short ask_port, short notification_port)
 {
+	assert(!host.empty() && "invalid host");
 	_host = host;
 	_news_port = news_port;
 	_ask_port = ask_port;
@@ -48,10 +51,11 @@ void clone_client::connect(string const & host, short news_port, short ask_port,
 
 void clone_client::start()
 {
-	assert(!_host.empty() && "invalid host");
-	assert(!_running && "client already running");
-	_running = true;
+	call_once(_running, std::bind(&clone_client::setup_and_run, this));
+}
 
+void clone_client::setup_and_run()
+{
 	if (!_ctx)
 		_ctx = shared_ptr<zmq::context_t>{new zmq::context_t{}};
 
@@ -59,25 +63,32 @@ void clone_client::start()
 	string const common_address = string{"tcp://"} + _host + ":";
 
 	_subscriber = new zmq::socket_t{*_ctx, ZMQ_SUB};
-	int linger_value = 0;
+	int linger_value = 0,
+		reconnect_interval_ms{50};
 	_subscriber->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
 	_subscriber->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+	_subscriber->setsockopt(ZMQ_RECONNECT_IVL, (void const *)&reconnect_interval_ms, sizeof(int));
 	_subscriber->connect((common_address + to_string(_news_port)).c_str());
 
 	_requester = new zmq::socket_t{*_ctx, ZMQ_DEALER};
 	_requester->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));  // do not block if socket is closed
+	_requester->setsockopt(ZMQ_RECONNECT_IVL, (void const *)&reconnect_interval_ms, sizeof(int));
 	_requester->connect((common_address + to_string(_ask_port)).c_str());
 
 	_notifier = new zmq::socket_t{*_ctx, ZMQ_PUSH};
 	_notifier->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
+	_notifier->setsockopt(ZMQ_RECONNECT_IVL, (void const *)&reconnect_interval_ms, sizeof(int));
 	_notifier->connect((common_address + to_string(_notification_port)).c_str());
 
 	install_monitors();
 
+	_ready = true;
+
 	loop();
 
+	_ready = false;
+
 	free_zmq();
-	_running = false;
 }
 
 void clone_client::ask(string const & question) const
@@ -98,34 +109,35 @@ void clone_client::quit()
 	_quit = true;
 }
 
-int clone_client::clear_incoming_message_queue(socket_id sid)
+bool clone_client::ready() const
 {
-	if (sid != SUBSCRIBER)
-		return 0;  // nothing to do
-
-	int counter = 0;
-	zmq::message_t msg;
-	while (_subscriber->recv(&msg, ZMQ_DONTWAIT))
-		++counter;
-
-	return counter;
+	return _ready;
 }
 
-void clone_client::on_news(std::string const & news)
+int clone_client::clear_incoming_subscriber_message_queue()
+{
+	int removed_message_count = 0;
+	zmq::message_t msg;
+	while (_subscriber->recv(&msg, ZMQ_DONTWAIT))
+		++removed_message_count;
+
+	return removed_message_count;
+}
+
+void clone_client::on_news(string const &)
 {}
 
-void clone_client::on_answer(std::string const & answer)
+void clone_client::on_answer(string const &)
 {}
 
-void clone_client::on_connected(socket_id sid, std::string const & addr)
+void clone_client::on_connected(socket_id, string const &)
 {}
 
-void clone_client::on_closed(socket_id sid, std::string const & addr)
+void clone_client::on_closed(socket_id, string const &)
 {}
 
-void clone_client::on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
+void clone_client::on_socket_event(socket_id, zmq_event_t const &, string const &)
 {}
-
 
 void clone_client::loop()
 {
@@ -160,26 +172,42 @@ void clone_client::install_monitors()
 {
 	// establish monitor channels
 	int result = zmq_socket_monitor((void *)*_subscriber, SUBSCRIBER_MON_ADDR, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " subscriber error" << std::endl;
+		assert(0);
+	}
 
 	result = zmq_socket_monitor((void *)*_requester, REQUESTER_MON_ADDR, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " requester error" << std::endl;
+		assert(0);
+	}
 
 	result = zmq_socket_monitor((void *)*_notifier, NOTIFIER_MON_ADDR, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " notifier error" << std::endl;
+		assert(0);
+	}
 
 	// connect to monitor channels
 	_sub_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
 	int linger_value = 0;
+	int reconnect_interval_ms = 50;
 	_sub_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
+	_sub_mon->setsockopt(ZMQ_RECONNECT_IVL, (void const *)&reconnect_interval_ms, sizeof(int));
 	_sub_mon->connect(SUBSCRIBER_MON_ADDR);
 
 	_req_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
 	_req_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
+	_req_mon->setsockopt(ZMQ_RECONNECT_IVL, (void const *)&reconnect_interval_ms, sizeof(int));
 	_req_mon->connect(REQUESTER_MON_ADDR);
 
 	_notif_mon = new zmq::socket_t{*_ctx, ZMQ_PAIR};
 	_notif_mon->setsockopt(ZMQ_LINGER, (void const *)&linger_value, sizeof(int));
+	_notif_mon->setsockopt(ZMQ_RECONNECT_IVL, (void const *)&reconnect_interval_ms, sizeof(int));
 	_notif_mon->connect(NOTIFIER_MON_ADDR);
 }
 
@@ -188,19 +216,19 @@ void clone_client::handle_monitor_events()
 	string addr;
 	zmq_event_t event;
 
-	if (zmqu::try_recv(*_sub_mon, event))
+	while (zmqu::try_recv(*_sub_mon, event))
 	{
 		zmqu::recv(*_sub_mon, addr);
 		socket_event(SUBSCRIBER, event, addr);
 	}
 
-	if (zmqu::try_recv(*_req_mon, event))
+	while (zmqu::try_recv(*_req_mon, event))
 	{
 		zmqu::recv(*_req_mon, addr);
 		socket_event(REQUESTER, event, addr);
 	}
 
-	if (zmqu::try_recv(*_notif_mon, event))
+	while (zmqu::try_recv(*_notif_mon, event))
 	{
 		zmqu::recv(*_notif_mon, addr);
 		socket_event(NOTIFIER, event, addr);
@@ -214,7 +242,6 @@ void clone_client::socket_event(socket_id sid, zmq_event_t const & e, std::strin
 		case ZMQ_EVENT_CONNECTED:
 			on_connected(sid, addr);
 			break;
-
 		case ZMQ_EVENT_CLOSED:
 			on_closed(sid, addr);
 			break;
@@ -227,13 +254,25 @@ void clone_client::free_zmq()
 {
 	// libzmq 4 suffers from hanging if zmq_socket_monitor() used, see https://github.com/zeromq/libzmq/issues/1279
 	int result = zmq_socket_monitor((void *)*_subscriber, nullptr, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " subscriber error" << std::endl;
+		assert(0);
+	}
 
 	result = zmq_socket_monitor((void *)*_requester, nullptr, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " requester error" << std::endl;
+		assert(0);
+	}
 
 	result = zmq_socket_monitor((void *)*_notifier, nullptr, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " notifier error" << std::endl;
+		assert(0);
+	}
 
 	delete _notif_mon;
 	delete _req_mon;

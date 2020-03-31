@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <atomic>
+#include <mutex>
 #include <string>
 #include <zmq.hpp>
 #include "concurrent_queue.hpp"
@@ -8,23 +9,23 @@
 
 namespace zmqu {
 
-/*! Multithread safe (queue based) ZeroMQ clone pattern client implementation.
+/*! Multithread safe ZeroMQ clone pattern client implementation.
 \code
-	struct cout_client: publis zmqu::clone_client
+struct cout_client : publis zmqu::clone_client
+{
+	void on_news(string const & news) override
 	{
-		void on_news(string const & news) override
-		{
-			cout << news << std::endl;
-		}
-	};
-
-	void foo()
-	{
-		cout_client c;
-		c.connect("localhost", 5555, 5556, 5557);
-		std::thread t{&clone_client_q::start, &c};
-		t.join();
+		cout << news << std::endl;
 	}
+};
+
+void main(int argc, char * argv[])
+{
+	zmqu::async<cout_client> c;
+	c.connect("localhost", 5555, 5556, 5557);
+	c.run();
+	c.join();
+}
 \endcode */
 class clone_client
 {
@@ -33,7 +34,8 @@ public:
 	{
 		SUBSCRIBER,   // can only receive messages (news)
 		REQUESTER,  // can transmit and receive messages (question, answer)
-		NOTIFIER  // can only transmit messages (notifications)
+		NOTIFIER,  // can only transmit messages (notifications)
+		SOCKET_ID_COUNT
 	};
 
 	clone_client();
@@ -44,9 +46,10 @@ public:
 	virtual void start();
 	virtual void ask(std::string const & question) const;  //!< ask server
 	virtual void notify(std::string const & news) const;  //!< notify server
-	virtual void quit();  //!< transparent async quit
+	virtual void quit();  //!< async quit request
+	virtual bool ready() const;
 
-	int clear_incoming_message_queue(socket_id sid);  //!< returns number of removed messages
+	int clear_incoming_subscriber_message_queue();  //!< returns number of removed messages
 
 protected:
 	virtual void idle();
@@ -61,6 +64,7 @@ protected:
 	virtual void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 
 private:
+	void setup_and_run();
 	void loop();
 	void install_monitors();
 	void handle_monitor_events();
@@ -68,12 +72,21 @@ private:
 	void free_zmq();
 
 	std::shared_ptr<zmq::context_t> _ctx;
-	zmq::socket_t * _subscriber, * _requester, * _notifier;
-	std::atomic_bool _running, _quit;
-	mutable concurrent_queue<std::string> _requester_queue, _notifier_queue;
+	zmq::socket_t * _subscriber,
+		* _requester,
+		* _notifier;
+	std::atomic_bool _ready,
+		_quit;
+	std::once_flag _running;
+	mutable concurrent_queue<std::string> _requester_queue,
+		_notifier_queue;
 	std::string _host;
-	short _news_port, _ask_port, _notification_port;
-	zmq::socket_t * _sub_mon, * _req_mon, * _notif_mon;  //!< ZMQ monotor sockets
+	short _news_port,
+		_ask_port,
+		_notification_port;
+	zmq::socket_t * _sub_mon,
+		* _req_mon,
+		* _notif_mon;  //!< ZMQ monotor sockets
 };
 
 }   // zmqu
