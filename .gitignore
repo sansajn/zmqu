@@ -5,11 +5,13 @@
 /.sconsign.dblite
 /.directory
 
-zmqu.creator
-zmqu.creator.user
-zmqu.files
-zmqu.includes
-zmqu.config
+/zmqu.creator
+/zmqu.creator.user
+/zmqu.files
+/zmqu.includes
+/zmqu.config
+/zmqu.cxxflags
+/zmqu.cflags
 
 /legacy/ccclient
 /legacy/ccserv

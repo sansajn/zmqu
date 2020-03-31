@@ -3,35 +3,36 @@
 
 namespace zmqu {
 
-//! \note we expect ClientImpl to be derived from zmqu::clone_client
-template <typename ClientImpl>
-class async_client
-	: public ClientImpl
+/*! helper to run client/server implementation in an asynchronous way */
+template <typename T>
+class async : public T
 {
 public:
-	async_client();
+	using T::T;  // reuse constructors
+	~async();
 	void run();
-	virtual ~async_client();
+	void join();
 
 private:
 	std::thread _client_thread;
 };
 
-
-template <typename ClientImpl>
-async_client<ClientImpl>::async_client() {}
-
-template <typename ClientImpl>
-void async_client<ClientImpl>::run()
+template <typename T>
+async<T>::~async()
 {
-	_client_thread = std::thread{&ClientImpl::start, this};
-	std::this_thread::sleep_for(std::chrono::milliseconds{100});  // wait for thread
+	T::quit();
+	join();
 }
 
-template <typename ClientImpl>
-async_client<ClientImpl>::~async_client()
+template <typename T>
+void async<T>::run()
 {
-	ClientImpl::quit();
+	_client_thread = std::thread{&T::start, this};
+}
+
+template <typename T>
+void async<T>::join()
+{
 	if (_client_thread.joinable())
 		_client_thread.join();
 }

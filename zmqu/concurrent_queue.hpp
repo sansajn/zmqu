@@ -14,7 +14,7 @@ class concurrent_queue
 public:
 	concurrent_queue();
 	concurrent_queue(concurrent_queue const & rhs);
-	void push(T x);  // TODO: why not reference, but value ?
+	void push(T x);
 	void wait_and_pop(T & result);
 
 	template <typename Rep, typename Period>

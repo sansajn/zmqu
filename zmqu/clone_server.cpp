@@ -13,6 +13,7 @@ constexpr char const * COLLECTOR_MON_ADDR = "inproc://cloneserver.monitor.collec
 using std::string;
 using std::to_string;
 using std::vector;
+using std::call_once;
 
 clone_server::clone_server()
 	: clone_server(std::shared_ptr<zmq::context_t>{})
@@ -23,7 +24,7 @@ clone_server::clone_server(std::shared_ptr<zmq::context_t> ctx)
 	, _publisher{nullptr}
 	, _responder{nullptr}
 	, _collector{nullptr}
-	, _running{false}
+	, _ready{false}
 	, _quit{false}
 	, _news_port{0}
 	, _answer_port{0}
@@ -51,11 +52,9 @@ void clone_server::bind(std::string const & host, short news_port, short answer_
 	_notification_port = notification_port;
 }
 
-void clone_server::start()
-{
-	assert(!_running && "server already running");
-	_running = true;
 
+void clone_server::setup_and_run()
+{
 	if (!_ctx)
 		_ctx = std::shared_ptr<zmq::context_t>{new zmq::context_t{}};
 
@@ -75,8 +74,6 @@ void clone_server::start()
 		int sndhwm = -1;
 		length = sizeof(int);
 		_publisher->getsockopt(ZMQ_SNDHWM, &sndhwm, &length);
-
-		std::cerr << "publisher(ZMQ_RCVHWM=" << rcvhwm << ", ZMQ_SNDHWM=" << sndhwm << ") created" << std::endl;
 	}
 
 	_responder = new zmq::socket_t{*_ctx, ZMQ_ROUTER};
@@ -89,10 +86,18 @@ void clone_server::start()
 
 	install_monitors();
 
+	_ready = true;
+
 	loop();
 
+	_ready = false;
+
 	free_zmq();
-	_running = false;
+}
+
+void clone_server::start()
+{
+	call_once(_running, std::bind(&clone_server::setup_and_run, this));
 }
 
 void clone_server::publish(std::string const & news) const
@@ -125,6 +130,11 @@ void clone_server::on_disconnected(socket_id, std::string const &)
 void clone_server::on_socket_event(socket_id, zmq_event_t const &, std::string const &)
 {}
 
+bool clone_server::ready() const
+{
+	return _ready;
+}
+
 void clone_server::loop()
 {
 	while (!_quit)
@@ -138,7 +148,11 @@ void clone_server::loop()
 		// publish
 		string news;
 		for (int i = 100; i && _publisher_queue.try_pop(news); --i)
-			zmqu::send(*_publisher, news);
+		{
+			size_t bytes = zmqu::send(*_publisher, news);
+			if (bytes == 0)
+				std::cerr << "zmq: zero bytes send via zmq send() function" << std::endl;
+		}
 
 		vector<string> id_with_msg{2};
 		while (zmqu::try_recv(*_responder, id_with_msg[0]))
@@ -228,13 +242,25 @@ void clone_server::free_zmq()
 {
 	// libzmq 4 suffers from hanging if zmq_socket_monitor() used, see https://github.com/zeromq/libzmq/issues/1279
 	int result = zmq_socket_monitor((void *)*_collector, nullptr, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " collector error" << std::endl;
+		assert(0);
+	}
 
 	result = zmq_socket_monitor((void *)*_responder, nullptr, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " responder error" << std::endl;
+		assert(0);
+	}
 
 	result = zmq_socket_monitor((void *)*_publisher, nullptr, ZMQ_EVENT_ALL);
-	assert(result != -1);
+	if (result == -1)
+	{
+		std::cerr << __PRETTY_FUNCTION__ << " publisher error" << std::endl;
+		assert(0);
+	}
 
 	delete _coll_mon;
 	delete _resp_mon;

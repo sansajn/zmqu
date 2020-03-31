@@ -2,12 +2,8 @@
 #include <vector>
 #include <string>
 #include <zmq.hpp>
-#include "json.hpp"
 
 namespace zmqu {
-
-void send_json(zmq::socket_t & sock, jtree & json);
-
 
 // type aware send specializations
 template <typename T>

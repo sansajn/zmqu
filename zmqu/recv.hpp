@@ -2,12 +2,10 @@
 #include <vector>
 #include <string>
 #include <zmq.hpp>
-#include "json.hpp"
 
 namespace zmqu {
 
 std::string recv(zmq::socket_t & sock);
-void recv_json(zmq::socket_t & sock, jtree & json);
 
 template <typename T>
 inline void recv_one(zmq::socket_t & sock, T & t)  //!< generic POD receive support

@@ -2,12 +2,14 @@
 #include <thread>
 #include <memory>
 #include <catch.hpp>
-#include <zmqu/send.hpp>
-#include <zmqu/recv.hpp>
-#include <zmqu/clone_client.hpp>
+#include "zmqu/send.hpp"
+#include "zmqu/recv.hpp"
+#include "zmqu/clone_client.hpp"
+#include "zmqu/async.hpp"
 
 using std::string;
 using std::shared_ptr;
+using zmqu::async;
 
 struct dummy_client_subscribe_test : public zmqu::clone_client
 {
@@ -46,15 +48,17 @@ struct dummy_client_monitoring_test : public zmqu::clone_client
 	}
 };
 
-TEST_CASE("clone client news (subscriber) channel", "[clone_client]")
+TEST_CASE("clone client news (subscriber) channel",
+	"[clone_client]")
 {
 	zmq::context_t ctx;
 	zmq::socket_t socket{ctx, ZMQ_PUB};
 	socket.bind("tcp://*:5556");
 
-	dummy_client_subscribe_test client;
+	async<dummy_client_subscribe_test> client;
 	client.connect("localhost", 5556, 5557, 5558);
-	std::thread client_thread{&dummy_client_subscribe_test::start, &client};  // run client
+	client.run();
+
 	std::this_thread::sleep_for(std::chrono::milliseconds{10});  // wait for thread
 
 	// send a news to client
@@ -66,8 +70,6 @@ TEST_CASE("clone client news (subscriber) channel", "[clone_client]")
 	REQUIRE(client.last_news == expected);
 
 	client.quit();  // quit client
-
-	client_thread.join();
 }
 
 TEST_CASE("clone client ask channel test", "[clone_client]")
