@@ -27,3 +27,5 @@
 /test/sync_send_hang
 /test/clone_monitor
 /test/subscriber_events
+/test/pong_classics
+/test/pong_fiber

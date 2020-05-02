@@ -34,7 +34,14 @@ zmqu_objs = env.Object(Glob('zmqu/*.cpp'))
 zmqu_lib = env.StaticLibrary('zmqu', [zmqu_objs])
 
 # tests
-test_env = env.Clone()
+test_env = Environment(
+	CCFLAGS=['-std=c++17', '-O0', '-g', '-Wall'],
+	LIBS=['pthread', 'boost_thread', 'boost_system', 'boost_fiber',
+		'boost_context'],
+	CPPDEFINES=['BOOST_SPIRIT_THREADSAFE'],
+	CPPPATH=['.'])
+
+test_env.ParseConfig('pkg-config --cflags --libs libzmq')
 
 test_env.Program('utest', [
 	'test/main.cpp',
@@ -49,6 +56,9 @@ env.Program(['test/monitor.cpp', zmqu_lib])
 env.Program(['test/recv_vector.cpp', zmqu_lib])
 env.Program(['test/subscriber_events.cpp', zmqu_lib])
 env.Program(['test/clone_monitor.cpp', zmqu_lib])
+
+test_env.Program(['test/pong_classics.cpp', zmqu_lib])
+test_env.Program(['test/pong_fiber.cpp', zmqu_lib])
 
 
 boosted_env = env.Clone()
