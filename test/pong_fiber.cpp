@@ -1,6 +1,8 @@
 // boost fiber based ping/pong sample
 #include <string>
 #include <functional>
+#include <thread>
+#include <chrono>
 #include <stdexcept>
 #include <iostream>
 #include <boost/fiber/all.hpp>
@@ -12,11 +14,15 @@ using std::ref;
 using std::runtime_error;
 using std::cout,
 	std::endl;
+using namespace std::chrono_literals;
+namespace this_thread = std::this_thread;
+
 using namespace boost::fibers;
 namespace this_fiber = boost::this_fiber;
 
 using zmqu::send,
 	zmqu::recv, zmqu::try_recv;
+
 
 void request_job(zmq::socket_t & req)
 {
@@ -53,6 +59,15 @@ void replay_job(zmq::socket_t & rep)
 	}
 }
 
+void idle_job()
+{
+	while (true)
+	{
+		this_thread::sleep_for(5ms);
+		this_fiber::yield();
+	}
+}
+
 int main(int argc, char * argv[])
 {
 	zmq::context_t ctx;
@@ -63,7 +78,8 @@ int main(int argc, char * argv[])
 	req.connect("tcp://localhost:5555");
 
 	fiber request_fb{request_job, ref(req)},
-		replay_fb{replay_job, ref(rep)};
+		replay_fb{replay_job, ref(rep)},
+		idle_fb{idle_job};
 
 	request_fb.join();
 	replay_fb.join();
