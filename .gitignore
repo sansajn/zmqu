@@ -1,5 +1,6 @@
 *.o
 /libzmqu.a
+/config.log
 
 /utest
 /.sconsign.dblite
