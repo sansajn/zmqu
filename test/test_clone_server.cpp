@@ -13,6 +13,8 @@ using std::atomic_bool;
 using std::string;
 using std::cout;
 
+namespace {
+
 class dummy_server : public zmqu::clone_server
 {
 public:
@@ -56,6 +58,8 @@ private:
 	string _notification;
 	mutex _mtx;
 };
+
+}  // make private for this cpp file
 
 
 TEST_CASE("clone server can publish news", "[clone_server]")

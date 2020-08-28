@@ -11,11 +11,11 @@ namespace zmqu {
 
 /*! Multithread safe ZeroMQ clone pattern client implementation.
 \code
-struct cout_client : publis zmqu::clone_client
+struct cout_client : public zmqu::clone_client
 {
 	void on_news(string const & news) override
 	{
-		cout << news << std::endl;
+		std::cout << news << std::endl;
 	}
 };
 
@@ -23,7 +23,7 @@ void main(int argc, char * argv[])
 {
 	zmqu::async<cout_client> c;
 	c.connect("localhost", 5555, 5556, 5557);
-	c.run();
+	c.run_sync();
 	c.join();
 }
 \endcode */
@@ -48,11 +48,15 @@ public:
 	virtual void notify(std::string const & news) const;  //!< notify server
 	virtual void quit();  //!< async quit request
 	virtual bool ready() const;
+	virtual bool connected() const;  //!< check all sockets connected
+	virtual bool connected(socket_id sid) const;
 
 	int clear_incoming_subscriber_message_queue();  //!< returns number of removed messages
 
 protected:
-	virtual void idle();
+	virtual void idle();  //!< \note executed from clone_client thread
+
+	zmq::context_t & context();
 
 	// server events
 	virtual void on_news(std::string const & news);  //!< on server news (publisher socket)
@@ -70,6 +74,7 @@ private:
 	void handle_monitor_events();
 	void socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr);
 	void free_zmq();
+	void set_connected(socket_id sid, bool value);
 
 	std::shared_ptr<zmq::context_t> _ctx;
 	zmq::socket_t * _subscriber,
@@ -87,6 +92,9 @@ private:
 	zmq::socket_t * _sub_mon,
 		* _req_mon,
 		* _notif_mon;  //!< ZMQ monotor sockets
+	std::atomic_bool _subscriber_connected,
+		_requester_connected,
+		_notifier_connected;
 };
 
 }   // zmqu

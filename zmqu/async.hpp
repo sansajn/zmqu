@@ -13,6 +13,7 @@ public:
 	using T::T;  // reuse constructors
 	~async();
 	void run();
+	bool run_sync(std::chrono::milliseconds timeout = std::chrono::milliseconds{1000});
 	void join();
 
 private:
@@ -53,6 +54,13 @@ template <typename T>
 void async<T>::run()
 {
 	_client_thread = std::thread{&T::start, this};
+}
+
+template <typename T>
+bool async<T>::run_sync(std::chrono::milliseconds timeout)
+{
+	run();
+	return wait_event([this]{return T::ready();}, timeout);
 }
 
 template <typename T>

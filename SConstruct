@@ -22,7 +22,7 @@ def main():
 
 
 def build_zmqu():
-	cxxflags = ['-std=c++14', '-Wall']
+	cxxflags = ['-std=c++14', '-Wall', '-Wno-deprecated-declarations']
 
 	if GetOption('release_build'):
 		cxxflags.extend(['-O2'])
@@ -50,7 +50,7 @@ def build_zmqu():
 def build_tests(zmqu_lib):
 
 	test_env = Environment(
-		CCFLAGS=['-std=c++17', '-O0', '-g', '-Wall'],
+		CCFLAGS=['-std=c++17', '-O0', '-g', '-Wall', '-Wno-deprecated-declarations'],
 		LIBS=['pthread', 'boost_thread', 'boost_system', 'boost_fiber',
 			'boost_context', 'boost_log'],
 		CPPDEFINES=['BOOST_SPIRIT_THREADSAFE', 'BOOST_LOG_DYN_LINK'],

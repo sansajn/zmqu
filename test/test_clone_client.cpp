@@ -1,5 +1,6 @@
 #include <string>
 #include <thread>
+#include <atomic>
 #include <memory>
 #include <chrono>
 #include <catch.hpp>
@@ -28,30 +29,42 @@ struct dummy_client_ask_test : public zmqu::clone_client
 
 struct dummy_client_monitoring_test : public zmqu::clone_client
 {
-	int subscriber_state = -1;
-	int requester_state = -1;
-	int notifier_state = -1;
+	std::atomic_size_t news_count = 0;
 
-	void on_socket_event(socket_id sid, zmq_event_t const & e, std::string const & addr)
+	void on_news(string const & news) override
 	{
-		switch (sid)
-		{
-			case SUBSCRIBER:
-				subscriber_state = e.event;
-				break;
-
-			case REQUESTER:
-				requester_state = e.event;
-				break;
-
-			case NOTIFIER:
-				notifier_state = e.event;
-				break;
-
-			default: break;
-		}
+		++news_count;
 	}
 };
+
+namespace {
+
+class dummy_server
+{
+private:
+	zmq::context_t _ctx;  // needs to be at the beginning to force initialization order
+
+public:
+	zmq::socket_t publisher,
+		responder,
+		collector;
+
+	dummy_server()
+		: _ctx{}
+		, publisher{_ctx, ZMQ_PUB}
+		, responder{_ctx, ZMQ_ROUTER}
+		, collector{_ctx, ZMQ_PULL}
+	{}
+
+	void bind()
+	{
+		publisher.bind("tcp://*:5556");
+		responder.bind("tcp://*:5557");
+		collector.bind("tcp://*:5558");
+	}
+};
+
+}  // make private for this cpp file
 
 TEST_CASE("clone client news (subscriber) channel",
 	"[clone_client]")
@@ -132,31 +145,62 @@ TEST_CASE("clone client notify channel test",
 TEST_CASE("clone client socket events monitoring test",
 	"[clone_client]")
 {
-	// dummy server
-	shared_ptr<zmq::context_t> ctx{new zmq::context_t};
-	zmq::socket_t publisher_socket{*ctx, ZMQ_PUB};  // publisher
-	publisher_socket.bind("tcp://*:5556");
+	// SETUP
 
-	zmq::socket_t responder_socket{*ctx, ZMQ_ROUTER};  // responder
-	responder_socket.bind("tcp://*:5557");
-
-	zmq::socket_t collector_socket{*ctx, ZMQ_PULL};  // collector
-	collector_socket.bind("tcp://*:5558");
+	dummy_server server;
+	server.bind();
 
 	// client
 	async<dummy_client_monitoring_test> client;
 	client.connect("localhost", 5556, 5557, 5558);
 
-	REQUIRE(client.subscriber_state == -1);
-	REQUIRE(client.requester_state == -1);
-	REQUIRE(client.notifier_state == -1);
+	REQUIRE_FALSE(client.connected());
 
-	client.run();
-	REQUIRE(wait_event([&client]{return client.ready();}, seconds{1}));
+	// ACT
 
-	REQUIRE(client.subscriber_state == ZMQ_EVENT_CONNECTED);
-	REQUIRE(client.requester_state == ZMQ_EVENT_CONNECTED);
-	REQUIRE(client.notifier_state == ZMQ_EVENT_CONNECTED);
+	REQUIRE(client.run_sync());
+
+	// CHECK
+
+	REQUIRE(client.ready());
+	REQUIRE(client.connected(dummy_client_monitoring_test::SUBSCRIBER));
+	REQUIRE(client.connected(dummy_client_monitoring_test::REQUESTER));
+	REQUIRE(client.connected(dummy_client_monitoring_test::NOTIFIER));
+	REQUIRE(client.connected());
+
+	// CLEANUP
+
+	client.quit();
+}
+
+TEST_CASE("client can receive news",
+	"[clone_client][receive]")
+{
+	// SETUP
+	constexpr size_t NEWS_AMOUNT = 100;
+
+	dummy_server server;
+	server.bind();
+
+	async<dummy_client_monitoring_test> client;
+	client.connect("localhost", 5556, 5557, 5558);
+
+	REQUIRE_FALSE(client.connected());
+
+	// ACT
+
+	REQUIRE(client.run_sync());
+
+	for (size_t i = 0; i < NEWS_AMOUNT; ++i)
+		zmqu::send(server.publisher, i);
+
+	// CHECK
+
+	REQUIRE(client.ready());
+	REQUIRE(client.connected());
+	REQUIRE(wait_event([&client]{return client.news_count == NEWS_AMOUNT;}, seconds{1}));
+
+	// CLEANUP
 
 	client.quit();
 }

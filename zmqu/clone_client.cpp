@@ -1,10 +1,11 @@
 #include <functional>
 #include <thread>
 #include <iostream>
+#include <chrono>
 #include "poller.hpp"
-#include "clone_client.hpp"
 #include "recv.hpp"
 #include "send.hpp"
+#include "clone_client.hpp"
 
 namespace zmqu {
 
@@ -15,6 +16,12 @@ constexpr char const * NOTIFIER_MON_ADDR = "inproc://cloneclient.monitor.notifie
 using std::string;
 using std::to_string;
 using std::shared_ptr;
+using std::clog;
+using std::chrono::steady_clock;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+
+constexpr milliseconds LOOP_BLOCKING_TRIGGER{100};
 
 clone_client::clone_client()
 	: clone_client{shared_ptr<zmq::context_t>{}}
@@ -33,6 +40,9 @@ clone_client::clone_client(shared_ptr<zmq::context_t> ctx)
 	, _sub_mon{nullptr}
 	, _req_mon{nullptr}
 	, _notif_mon{nullptr}
+	, _subscriber_connected{false}
+	, _requester_connected{false}
+	, _notifier_connected{false}
 {}
 
 clone_client::~clone_client()
@@ -104,6 +114,11 @@ void clone_client::notify(std::string const & news) const
 void clone_client::idle()
 {}
 
+zmq::context_t & clone_client::context()
+{
+	return *_ctx;
+}
+
 void clone_client::quit()
 {
 	_quit = true;
@@ -112,6 +127,23 @@ void clone_client::quit()
 bool clone_client::ready() const
 {
 	return _ready;
+}
+
+bool clone_client::connected() const
+{
+	return _subscriber_connected && _requester_connected && _notifier_connected;
+}
+
+bool clone_client::connected(socket_id sid) const
+{
+	switch (sid)
+	{
+		case SUBSCRIBER: return _subscriber_connected;
+		case REQUESTER: return _requester_connected;
+		case NOTIFIER: return _notifier_connected;
+		default:
+			throw std::logic_error{"unknown socket_id type (" + to_string(int(sid)) + ")"};
+	}
 }
 
 int clone_client::clear_incoming_subscriber_message_queue()
@@ -130,11 +162,16 @@ void clone_client::on_news(string const &)
 void clone_client::on_answer(string const &)
 {}
 
-void clone_client::on_connected(socket_id, string const &)
-{}
+void clone_client::on_connected(socket_id sid, string const &)
+{
+	set_connected(sid, true);
+}
 
-void clone_client::on_closed(socket_id, string const &)
-{}
+
+void clone_client::on_closed(socket_id sid, string const &)
+{
+	set_connected(sid, false);
+}
 
 void clone_client::on_socket_event(socket_id, zmq_event_t const &, string const &)
 {}
@@ -143,6 +180,8 @@ void clone_client::loop()
 {
 	while (!_quit)
 	{
+		steady_clock::time_point t0 = steady_clock::now();
+
 		handle_monitor_events();
 
 		// ask
@@ -162,6 +201,11 @@ void clone_client::loop()
 
 		while (zmqu::try_recv(*_requester, msg))
 			on_answer(msg);
+
+		steady_clock::duration dt = steady_clock::now() - t0;
+		if (dt > LOOP_BLOCKING_TRIGGER)
+			clog << "warning, clone_client loop blocking for "
+				<< duration_cast<milliseconds>(dt).count() << "ms" << std::endl;
 
 		if (!_quit)
 			idle();
@@ -280,6 +324,21 @@ void clone_client::free_zmq()
 	delete _notifier;
 	delete _requester;
 	delete _subscriber;
+	_subscriber_connected = false;
+	_requester_connected = false;
+	_notifier_connected = false;
+}
+
+void clone_client::set_connected(socket_id sid, bool value)
+{
+	switch (sid)
+	{
+		case SUBSCRIBER: _subscriber_connected = value; return;
+		case REQUESTER: _requester_connected = value; return;
+		case NOTIFIER: _notifier_connected = value; return;
+		default:
+			throw std::logic_error{"unknown socket_id type (" + to_string(int(sid)) + ")"};
+	}
 }
 
 }  // zmqu
