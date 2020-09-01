@@ -2,6 +2,7 @@
 #include <chrono>
 #include <algorithm>
 #include <thread>
+#include <atomic>
 
 namespace zmqu {
 
@@ -14,6 +15,7 @@ public:
 	~async();
 	void run();
 	bool run_sync(std::chrono::milliseconds timeout = std::chrono::milliseconds{1000});
+	bool run_sync(std::chrono::milliseconds timeout, bool & cancel);  //!< cancelable run with timeout
 	void join();
 
 private:
@@ -43,6 +45,23 @@ bool wait_event(UnaryPredicate pred, std::chrono::milliseconds const & timeout)
 	return pred();
 }
 
+//! cancelable `wait_event` implementation
+template <typename UnaryPredicate>
+bool wait_event(UnaryPredicate pred, std::chrono::milliseconds const & timeout, bool & cancel)
+{
+	using std::chrono::steady_clock;
+	using std::chrono::microseconds;
+
+	microseconds const sleep_step = std::min(microseconds{10*1000}, microseconds{timeout}/100);
+	auto const until = steady_clock::now() + timeout;
+	bool cond = false;
+
+	while (!cancel && (until > steady_clock::now()) && !(cond = pred()))
+		std::this_thread::sleep_for(sleep_step);
+
+	return cond;
+}
+
 template <typename T>
 async<T>::~async()
 {
@@ -61,6 +80,13 @@ bool async<T>::run_sync(std::chrono::milliseconds timeout)
 {
 	run();
 	return wait_event([this]{return T::ready();}, timeout);
+}
+
+template <typename T>
+bool async<T>::run_sync(std::chrono::milliseconds timeout, bool & cancel)
+{
+	run();
+	return wait_event([this]{return T::ready();}, timeout, cancel);
 }
 
 template <typename T>
